@@ -320,11 +320,7 @@ public class User extends BaseUser {
 			server.leaveGroup(this, recv.getGname());
 		else if (recv.getCommand() == Command.send)
 			send(recv.getDest(), recv.getMessage(), recv.getSQN());
-		else if (recv.getCommand() == Command.adduser){
-			ServerReply success = server.addUser(recv.getUsername(), recv.getPassword());
-			TransportObject sendObject = new TransportObject(Command.adduser,success);
-			queueReply(sendObject);
-		} else if (recv.getCommand() == Command.rtt) {
+		else if (recv.getCommand() == Command.rtt) {
 			try {
 				DBHandler.addRTT(recv.getRTT(),username);
 			} catch (SQLException e) {
