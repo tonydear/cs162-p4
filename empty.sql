@@ -1,7 +1,7 @@
 DROP TABLE Users;
 DROP TABLE Memberships;
 DROP TABLE Messages;
-DROP TABLE Rtt;
+DROP TABLE 'server info';
 
 CREATE TABLE Users (
 	username VARCHAR(64) NOT NULL,
@@ -32,10 +32,10 @@ CREATE TABLE Messages (
 		ON DELETE NO ACTION
 );
 
-CREATE TABLE IF NOT EXISTS `server info` (
-	`id` int(11) NOT NULL AUTO INCREMENT,
-	`name` varchar(20) NOT NULL,
-	`host` varchar(255) NOT NULL,
-	`port` int(5) NOT NULL,
-	PRIMARY KEY (`id`)
+CREATE TABLE IF NOT EXISTS server_info (
+	id int(11) NOT NULL AUTO INCREMENT,
+	name varchar(20) NOT NULL,
+	host varchar(255) NOT NULL,
+	port int(5) NOT NULL,
+	PRIMARY KEY (id)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO INCREMENT=1 ;

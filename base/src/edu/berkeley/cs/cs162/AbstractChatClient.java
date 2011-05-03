@@ -9,7 +9,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 
@@ -25,12 +27,19 @@ public abstract class AbstractChatClient extends Thread{
 	protected volatile boolean isWaiting; //waiting for reply from server?
 	protected volatile boolean isLoggedIn;
 	private volatile boolean isQueued;
+	private String homeIP;
+	private String backupIP;
+	private int homePort;
+	private int backupPort;
+	private Thread homePoller;
+	private String password;
+	private String username;
+	private boolean connectedToHome;
 	
 	public AbstractChatClient(){
 		mySocket = null;
 		logs = new HashMap<String,ChatLog>();
 		commands = new BufferedReader(new InputStreamReader(System.in));
-		
 		connected = false;
 		isWaiting = false;
 		reply = null;
@@ -90,21 +99,82 @@ public abstract class AbstractChatClient extends Thread{
 		System.out.println(o);
 	}
 	
-	private void adduser(String username, String password){
-		if(!connected)
-			return;
-		TransportObject toSend = new TransportObject(Command.adduser,username,password);
-		try{
-			isWaiting = true;
-			sent.writeObject(toSend);
-			reply = Command.adduser;
-			this.wait();
+	private void login(String username, String password){
+		try {
+			if (connected) {
+				System.err.println("already connected");
+				return;
+			}
+			this.username = username;
+			this.password = password;
+			List<Object> serverInfo = DBHandler.getServerAddresses(username);
+			homeIP = (String) serverInfo.get(0);
+			homePort = (Integer) serverInfo.get(1);
+			backupIP = (String) serverInfo.get(2);
+			backupPort = (Integer) serverInfo.get(3);
+			try {
+				mySocket = new Socket(homeIP, homePort);
+				connectedToHome = true;
+			} catch(IOException e) {
+				try{
+					mySocket = new Socket(backupIP, backupPort);
+					connectedToHome = false;
+					homePoller = new Thread() {
+						private Socket homeSocket;
+						@Override
+						public void run(){
+							while(true) {
+								try {
+									
+									homeSocket = new Socket(homeIP, homePort);
+									mySocket = homeSocket;
+									connectedToHome = true;
+									break;
+								} catch (UnknownHostException e1) {
+									// TODO Auto-generated catch block
+									e1.printStackTrace();
+								} catch (IOException e1) {
+									// TODO Auto-generated catch block
+									e1.printStackTrace();
+								}
+								try {
+									sleep(1000);
+								} catch (InterruptedException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								}
+							}
+						}
+					};
+					homePoller.start();
+				} catch(IOException ex){
+					output("login REJECTED");
+				}
+			}
+			
+			sent = new ObjectOutputStream(mySocket.getOutputStream());
+			InputStream input = mySocket.getInputStream();
+			received = new ObjectInputStream(input);
+			
+			connected = true;
+			if(receiver == null || !receiver.isAlive()) {
+				receiver = new Thread(){
+		            @Override
+		            public void run(){
+		            	while(connected){
+		            		receive();
+		            	}
+		            }
+		        };
+				receiver.start();
+			}
+		} catch (IllegalThreadStateException e) {
+			e.printStackTrace();
 		} catch (Exception e) {
+			output("connect REJECTED");
 			e.printStackTrace();
 		}
-	}
-	
-	private void login(String username, String password){
+		
 		if (!connected && (!isLoggedIn || !isQueued))
 			return;
 		TransportObject toSend = new TransportObject(Command.login, username, password);
@@ -164,6 +234,65 @@ public abstract class AbstractChatClient extends Thread{
 	
 	protected abstract void send(String dest, int sqn, String msg);
 	
+	private void switchToBackup() {
+		switchToBackup();
+		connected = false;
+		if (connectedToHome) {
+			try {
+				mySocket = new Socket(backupIP, backupPort);
+			} catch (UnknownHostException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			homePoller = new Thread() {
+				private Socket homeSocket;
+				@Override
+				public void run(){
+					while(true) {
+						try {
+							homeSocket = new Socket(homeIP, homePort);
+							TransportObject toSend = new TransportObject(Command.logout);
+							try {
+								sent.writeObject(toSend);
+								isWaiting = true;
+								reply = Command.logout;
+								this.wait();
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
+							mySocket = homeSocket;
+							sent = new ObjectOutputStream(mySocket.getOutputStream());
+							InputStream input = mySocket.getInputStream();
+							received = new ObjectInputStream(input);
+							connected = true;
+							connectedToHome = true;
+							break;
+						} catch (UnknownHostException e1) {
+							// TODO Auto-generated catch block
+							e1.printStackTrace();
+						} catch (IOException e1) {
+							// TODO Auto-generated catch block
+							e1.printStackTrace();
+						}
+						try {
+							sleep(1000);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
+				}
+			};
+			homePoller.start();
+		} else {
+			connected = false;
+			System.err.println("backup server connection failed");
+		}
+	}
+	
 	private void receive(){
 		TransportObject recObject = null;
 		try {
@@ -175,7 +304,7 @@ public abstract class AbstractChatClient extends Thread{
 			connected = false;
 			return;
 		} catch (EOFException e) {
-			connected = false;
+			switchToBackup();
 			return;
 		}
 		catch (Exception e) {
@@ -315,13 +444,7 @@ public abstract class AbstractChatClient extends Thread{
 			String password = tokens[2];
 			login(username,password);
 		}
-		else if (tokens[0].equals("adduser")) {
-			if (args != 3)
-				throw new Exception("invalid arguments for adduser command");
-			String username = tokens[1];
-			String password = tokens[2];
-			adduser(username,password);
-		}
+		
 		else if (tokens[0].equals("logout")) {
 			if(args != 1)
 				throw new Exception("invalid arguments for logout command");
