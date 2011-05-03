@@ -50,6 +50,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	private volatile boolean isDown;
 	private final static int MAX_USERS = 100;
 	private ServerSocket mySocket;
+	private ServerSocket serverSockets;
 	String servername = null;
 	
 	public ChatServer() {
@@ -65,6 +66,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		this();
 		try {
 			mySocket = new ServerSocket(c_port);
+			serverSockets = new ServerSocket(c_port+1); 
 		} catch (Exception e) {
 			throw new IOException("Server socket creation failed");
 		}
@@ -83,6 +85,8 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	}
 	
 	private void initStructures() throws Exception {
+		initServerConnections();
+		
 		//initialize groups as well as add group names to onlineNames
 		ResultSet Groupnames = DBHandler.getGroups();
 		while(Groupnames.next()) {
@@ -103,12 +107,13 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	
 	private void initServerConnections(){
 		try {
-			ResultSet servers = DBHandler.getServers();
-			while(servers.next()){
-				String name = servers.getString("name");
-				String ip = servers.getString("host");
-				int port = servers.getInt("port");
+			ResultSet serverRows = DBHandler.getServers();
+			while(serverRows.next()){
+				String name = serverRows.getString("name");
+				String ip = serverRows.getString("host");
+				int port = serverRows.getInt("port");
 				Socket s = new Socket(ip,port);
+				servers.put(name,new ServerConnection(s));
 			}
 		} catch (Exception e){
 			e.printStackTrace();
@@ -482,6 +487,20 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	
 	@Override
 	public void run(){
+		Thread listenForServers = new Thread(){
+			@Override
+			public void run(){
+				while(!isDown){
+					Socket newSocket;
+					try {
+						newSocket = serverSockets.accept();
+						
+					} catch (Exception e) {
+						
+					}
+				}
+			}
+		};
 		while(!isDown){
 			List<Handler> task = new ArrayList<Handler>();
 			Socket newSocket;
