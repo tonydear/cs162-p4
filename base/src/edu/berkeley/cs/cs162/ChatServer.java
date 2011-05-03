@@ -126,6 +126,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			ResultSet serverRows = DBHandler.getServers();
 			while(serverRows.next()){
 				String name = serverRows.getString("name");
+				if(name.equals(servername)) continue;
 				String ip = serverRows.getString("host");
 				int port = serverRows.getInt("port");
 				Socket s = new Socket(ip,port);
@@ -461,7 +462,31 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		isDown = true;
 		lock.writeLock().unlock();
 	}
-	//TODO sending messages to other servers
+	
+	public MsgSendError forward(TransportObject toSend, String username){
+		List<Object> serverAddresses = null;
+		try {
+			serverAddresses = DBHandler.getServerAddresses(username);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return MsgSendError.MESSAGE_FAILED;
+		}
+		if(serverAddresses!=null){
+			ServerConnection home = servers.get(serverAddresses.get(4));
+			ServerConnection backup = servers.get(serverAddresses.get(5));
+			if(home!=null){
+				home.acceptMessage(toSend);
+			} else if(backup!=null){
+				backup.acceptMessage(toSend);
+			} else
+				return MsgSendError.MESSAGE_FAILED;
+			return MsgSendError.MESSAGE_SENT;
+		}
+		
+		return MsgSendError.MESSAGE_FAILED;
+	}
+	
+	//TODO call forward appropriately
 	public MsgSendError processMessage(String source, String dest, String msg, int sqn, String timestamp) {	
 		Message message = new Message(timestamp, source, dest, msg);
 		message.setSQN(sqn);

@@ -94,26 +94,20 @@ public class ChatGroup {
 	
 	public synchronized MsgSendError forwardMessage(Message msg) { // returns SENT even if just stored on db
 		//generate list of users from database
-		ResultSet rs = DBHandler.getGroupMembers(name);
-		Set<String> userList = new HashSet<String>();
-		if(rs != null){
-			while(rs.next()) {
-				userList.add(rs.getString("username"));
-			}
-		}
+		Set<String> userList = getAllUsers();
 		
 		//check sender belongs in group
 		if (! userList.contains(msg.getSource()))
 			return MsgSendError.NOT_IN_GROUP;
 		
 		Iterator<String> it = userList.iterator();
-		boolean success = true;
+		
 		MsgSendError returnval = MsgSendError.MESSAGE_SENT;
 		while(it.hasNext()) {
 			String username = it.next();
 			TransportObject toSend = new TransportObject(ServerReply.receive,msg.getSource(),
 					msg.getDest(),msg.getContent(),msg.getTimestamp(),msg.getSQN());
-			MsgSendError response = myServer.GroupForward(toSend, username);
+			MsgSendError response = myServer.forward(toSend, username);
 			if(response == MsgSendError.MESSAGE_FAILED)
 				returnval = MsgSendError.MESSAGE_FAILED;
 		}
