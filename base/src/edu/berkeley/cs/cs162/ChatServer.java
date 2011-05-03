@@ -101,6 +101,17 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		}
 	}
 	
+	private void initServerConnections(){
+		ResultSet servers = DBHandler.getServers();
+		while(servers.next()){
+			String name = servers.getString("name");
+			String ip = servers.getString("host");
+			int port = servers.getInt("port");
+			Socket s = new Socket(ip,port);
+			
+		}
+	}
+	
 	public boolean isDown() { return isDown; }
 	
 	@Override
