@@ -1,5 +1,6 @@
 package edu.berkeley.cs.cs162;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -8,39 +9,51 @@ import java.util.Set;
 
 public class ChatGroup {
 	private String name;
-	private Set<String> userList;
-	private HashMap<String, User> loggedInUsers;
-	private final static int MAX_USERS = 10;
+	private ChatServer myServer;
 	
-	ChatGroup(String initname) {
+	ChatGroup(String initname, ChatServer cs) {
 		name = initname;
-		userList = new HashSet<String>();
-		loggedInUsers = new HashMap<String, User>();
+		myServer = cs;
 	}
 	
 	public Set<String> getAllUsers() {
+		ResultSet rs = DBHandler.getGroupMembers(name);
+		Set<String> userList = new HashSet<String>();
+		if(rs != null){
+			while(rs.next()) {
+				userList.add(rs.getString("username"));
+			}
+		}	
 		return userList;
 	}
 	
 	public void addUser(String uname){
-		userList.add(uname);
+		try {
+			DBHandler.addToGroup(uname, name);
+		} catch (SQLException e) {
+			System.err.println("User " + uname + " was not added to group " + name + ".");
+		}
 	}
 	
 	public void addLoggedInUser(String uname, User u) {
-		loggedInUsers.put(uname, u);
+		//loggedInUsers.put(uname, u);
 	}
 	
 	public void removeLoggedInUser(String uname) {
-		loggedInUsers.remove(uname);
-	}
-	
-	
-	public HashMap<String, User> getUserList() {
-		return loggedInUsers;
+		//loggedInUsers.remove(uname);
 	}
 	
 	public int getNumUsers() {
-		return loggedInUsers.size();
+		ResultSet rs;
+		try {
+			rs = DBHandler.getGroupMembers(name);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		if(rs != null)
+			return rs.getFetchSize();
+		else
+			return 0;
 	}
 	
 	public String getName() {
@@ -56,15 +69,8 @@ public class ChatGroup {
 	}
 	
 	public boolean joinGroup(String user, BaseUser userObj) {
-		if(userList.contains(user))			//user already in group
-			return false;
-		if(userList.size() + 1 > MAX_USERS)		//adding user would exceed capacity
-			return false;
-		
 		try {
 			DBHandler.addToGroup(user,name);
-			loggedInUsers.put(user, (User)userObj);			//add user to hashmap
-			userList.add(user);
 		} catch (SQLException e) {
 			e.printStackTrace();
 			return false;
@@ -73,12 +79,8 @@ public class ChatGroup {
 	}
 	
 	public boolean leaveGroup(String user) {
-		if(!loggedInUsers.containsKey(user))			//user was not registered with group
-			return false;
 		try {
 			DBHandler.removeFromGroup(user,name);
-			loggedInUsers.remove(user);					//remove user from hashmap
-			userList.remove(user);
 		} catch (SQLException e) {
 			e.printStackTrace();
 			return false;
@@ -87,31 +89,30 @@ public class ChatGroup {
 	}
 	
 	public synchronized MsgSendError forwardMessage(Message msg) { // returns SENT even if just stored on db
-		if (! loggedInUsers.containsKey(msg.getSource()))
-			return MsgSendError.NOT_IN_GROUP;
-		Iterator<String> it = userList.iterator();
-		boolean success = true;
-		while(it.hasNext()) {
-			String username = it.next();
-			User user = loggedInUsers.get(username);
-			if (user==null) {
-				if (!userList.contains(username)) {
-					success = false;
-				}
-				else {
-					try {
-						DBHandler.writeLog(msg, username);
-					} catch (SQLException e) {
-						e.printStackTrace();
-					}
-				}
-			} else{
-				success = user.acceptMsg(msg);
+		//generate list of users from database
+		ResultSet rs = DBHandler.getGroupMembers(name);
+		Set<String> userList = new HashSet<String>();
+		if(rs != null){
+			while(rs.next()) {
+				userList.add(rs.getString("username"));
 			}
 		}
-		if (success)
-			return MsgSendError.MESSAGE_SENT;
-		else 
-			return MsgSendError.MESSAGE_FAILED;
+		
+		//check sender belongs in group
+		if (! userList.contains(msg.getSource()))
+			return MsgSendError.NOT_IN_GROUP;
+		
+		Iterator<String> it = userList.iterator();
+		boolean success = true;
+		MsgSendError returnval = MsgSendError.MESSAGE_SENT;
+		while(it.hasNext()) {
+			String username = it.next();
+			TransportObject toSend = new TransportObject(ServerReply.receive,msg.getSource(),
+					msg.getDest(),msg.getContent(),msg.getTimestamp(),msg.getSQN());
+			MsgSendError response = myServer.GroupForward(toSend, username);
+			if(response == MsgSendError.MESSAGE_FAILED)
+				returnval = MsgSendError.MESSAGE_FAILED;
+		}
+		return returnval;
 	}
 }
