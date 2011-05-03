@@ -44,7 +44,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 
 	private Map<String, User> users;
 	private Map<String, ChatGroup> groups;
-	private Map<String, Socket> servers;
+	private Map<String, ServerConnection> servers;
 	private Set<String> onlineNames;
 	private ReentrantReadWriteLock lock;
 	private volatile boolean isDown;
@@ -54,7 +54,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	public ChatServer() {
 		users = new HashMap<String, User>();
 		groups = new HashMap<String, ChatGroup>();
-		servers = new HashMap<String, Socket>();
+		servers = new HashMap<String, ServerConnection>();
 		onlineNames = new HashSet<String>();
 		lock = new ReentrantReadWriteLock(true);
 		isDown = false;
