@@ -17,13 +17,18 @@ public class ChatGroup {
 	}
 	
 	public Set<String> getAllUsers() {
-		ResultSet rs = DBHandler.getGroupMembers(name);
+		ResultSet rs;
 		Set<String> userList = new HashSet<String>();
-		if(rs != null){
-			while(rs.next()) {
-				userList.add(rs.getString("username"));
-			}
-		}	
+		try {
+			rs = DBHandler.getGroupMembers(name);
+			if(rs != null){
+				while(rs.next()) {
+					userList.add(rs.getString("username"));
+				}
+			}	
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 		return userList;
 	}
 	
@@ -47,13 +52,12 @@ public class ChatGroup {
 		ResultSet rs;
 		try {
 			rs = DBHandler.getGroupMembers(name);
+			if(rs != null)
+				return rs.getFetchSize();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		if(rs != null)
-			return rs.getFetchSize();
-		else
-			return 0;
+		return 0;
 	}
 	
 	public String getName() {
