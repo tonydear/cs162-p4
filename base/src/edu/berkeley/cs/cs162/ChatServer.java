@@ -102,13 +102,16 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	}
 	
 	private void initServerConnections(){
-		ResultSet servers = DBHandler.getServers();
-		while(servers.next()){
-			String name = servers.getString("name");
-			String ip = servers.getString("host");
-			int port = servers.getInt("port");
-			Socket s = new Socket(ip,port);
-			
+		try {
+			ResultSet servers = DBHandler.getServers();
+			while(servers.next()){
+				String name = servers.getString("name");
+				String ip = servers.getString("host");
+				int port = servers.getInt("port");
+				Socket s = new Socket(ip,port);
+			}
+		} catch (Exception e){
+			e.printStackTrace();
 		}
 	}
 	
