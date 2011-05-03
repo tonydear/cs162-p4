@@ -1,5 +1,8 @@
 package edu.berkeley.cs.cs162;
 import java.io.IOException;
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -8,6 +11,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Time;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
 import sun.misc.*;
@@ -126,23 +131,21 @@ public class DBHandler {
     
     public static byte[] getSalt(String username) throws SQLException, IOException {
     	PreparedStatement pstmt = conn.prepareStatement("SELECT * FROM Users WHERE username = ?");
-    	if(pstmt == null) return null;
+    	if (pstmt == null) return null;
     	pstmt.setString(1, username);
     	ResultSet rs = pstmt.executeQuery();
     	rs.next();
-    	String salt = rs.getString("salt");
-    	return base64ToByte(salt);
+    	return base64ToByte(rs.getString("salt"));
     	
     }
     
     public static String getHashedPassword(String uname) throws SQLException {
     	PreparedStatement pstmt = conn.prepareStatement("SELECT * FROM Users WHERE username = ?");
-    	if(pstmt == null) return null;
+    	if (pstmt == null) return null;
     	pstmt.setString(1, uname);
     	ResultSet rs = pstmt.executeQuery();
     	rs.next();
-    	String hashedPassword = rs.getString("encrypted_password");
-    	return hashedPassword;
+    	return rs.getString("encrypted_password");
     }
     
     public static ResultSet getUsers() throws SQLException {
@@ -160,14 +163,97 @@ public class DBHandler {
     	return stmt.executeQuery("SELECT * FROM Memberships");
     }
     
-    public static ResultSet getUserMemberships(String u) throws SQLException {
-    	PreparedStatement pstmt = null;
-    	ResultSet rs = null;
-
-    	pstmt = conn.prepareStatement("SELECT gname FROM Memberships WHERE username = ?");
-    	pstmt.setString(1, u);
-    	rs = pstmt.executeQuery();
-    	return rs;
+    public static ResultSet getServers() throws SQLException {
+    	Statement stmt = conn.createStatement();
+    	return stmt.executeQuery("SELECT name, host, port FROM server_info");
+    }
+    
+    public static ResultSet getUserMemberships(String username) throws SQLException {
+    	PreparedStatement pstmt = conn.prepareStatement("SELECT gname FROM Memberships WHERE username = ?");
+    	pstmt.setString(1, username);
+    	return pstmt.executeQuery();
+    }
+    
+    public static ResultSet getGroupMembers(String gname) throws SQLException {
+    	PreparedStatement pstmt = conn.prepareStatement("SELECT username FROM Memberships WHERE gname = ?");
+    	pstmt.setString(1, gname);
+    	return pstmt.executeQuery();
+    }
+    
+    public static List<Object> getServerAddresses(String username) throws SQLException {
+    	//Query for all server names
+    	HashMap<BigInteger, String> serverHashes = new HashMap<BigInteger, String>();
+    	PreparedStatement allServers = conn.prepareStatement("SELECT name FROM server_info");
+    	ResultSet rs = allServers.executeQuery();
+    	
+    	//Hash all server names into serverHashes<hash, name>
+    	while (rs.next()) {
+			try {
+				String server = rs.getString("name");
+				MessageDigest digest = MessageDigest.getInstance("SHA-256");
+	            digest.update(server.getBytes());
+	            byte[] hash = digest.digest();
+	            serverHashes.put(new BigInteger(hash), server);
+			} catch (NoSuchAlgorithmException e) {
+				e.printStackTrace();
+			}
+    	}
+    	
+    	//Create list of hashes only and sort
+    	List<BigInteger> hashes = new ArrayList<BigInteger>(serverHashes.keySet());
+    	Collections.sort(hashes);
+    	
+    	//Hash username into userHash
+    	BigInteger userHash = null;
+		try {
+			MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(username.getBytes());
+            byte[] hash = digest.digest();
+            userHash = new BigInteger(hash);
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+    	
+		//Try to find the two next larger hashes than userHash
+		BigInteger first = null;
+		BigInteger second = null;
+		for (BigInteger hash : hashes) {
+			if (first == null && hash.compareTo(userHash) >= 0)
+				first = hash;
+			else if (first != null) {
+				second = hash;
+				break;
+			}
+		}
+		
+		//If one or both were not found, then must wrap around to the beginning
+		if (first == null) {
+			first = hashes.get(0);
+			second = hashes.get(1);
+		} else if (second == null)
+			second = hashes.get(0);
+		
+		//Get server names corresponding to the hashes
+		String homeServer = serverHashes.get(first);
+		String backupServer = serverHashes.get(second);
+		
+		//Query for host and port for those two servers
+    	PreparedStatement stmt = conn.prepareStatement("SELECT host, port FROM server_info WHERE name = ?");
+    	stmt.setString(1, homeServer);
+    	ResultSet rs1 = stmt.executeQuery();
+    	stmt.setString(1, backupServer);
+    	ResultSet rs2 = stmt.executeQuery();
+    	
+    	//Construct results and return
+    	List<Object> addresses = new ArrayList<Object>();
+    	rs1.next();
+    	addresses.add(rs1.getString("host"));
+    	addresses.add(rs1.getInt("port"));
+    	rs2.next();
+    	addresses.add(rs2.getString("host"));
+    	addresses.add(rs2.getInt("port"));
+    	
+    	return addresses;
     }
     
     public static void addRTT(double rtt, String username) throws SQLException {
