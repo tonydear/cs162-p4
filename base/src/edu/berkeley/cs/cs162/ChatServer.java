@@ -53,6 +53,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	private final static int MAX_WAITING_USERS = 10;
 	private final static long TIMEOUT = 20;
 	private ServerSocket mySocket;
+	String servername = null;
 	
 	public ChatServer() {
 		users = new HashMap<String, User>();
@@ -64,10 +65,11 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		isDown = false;
 	}
 	
-	public ChatServer(int port) throws IOException {
+	public ChatServer(String name, int c_port, int s_port) throws IOException {
 		this();
+		servername = name;
 		try {
-			mySocket = new ServerSocket(port);
+			mySocket = new ServerSocket(c_port);
 		} catch (Exception e) {
 			throw new IOException("Server socket creation failed");
 		}
@@ -624,11 +626,15 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	}
 	
 	public static void main(String[] args) throws Exception{
-		if (args.length != 1) {
+		if (args.length != 6) {
 			throw new Exception("Invalid number of args to command");
 		}
-		int port = Integer.parseInt(args[0]);
-		ChatServer chatServer = new ChatServer(port);
+		if(!"--name".equals(args[0]) || !"--c_port".equals(args[2]) || !"--s_port".equals(args[4]))
+			throw new Exception("Invalid parameter args");
+		String servername = args[1];
+		int clientport = Integer.parseInt(args[3]);
+		int serverport = Integer.parseInt(args[5]);
+		ChatServer chatServer = new ChatServer(servername,clientport,serverport);
 		BufferedReader commands = new BufferedReader(new InputStreamReader(System.in));
 		while (!chatServer.isDown()) {
 			String line = commands.readLine();
