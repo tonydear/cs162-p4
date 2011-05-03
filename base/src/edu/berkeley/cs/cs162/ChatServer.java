@@ -42,16 +42,12 @@ import java.util.concurrent.TimeUnit;
 
 public class ChatServer extends Thread implements ChatServerInterface {
 
-	private BlockingQueue<User> waiting_users;
 	private Map<String, User> users;
 	private Map<String, ChatGroup> groups;
 	private Set<String> onlineNames;
-	private Set<String> registeredUsers;
 	private ReentrantReadWriteLock lock;
 	private volatile boolean isDown;
 	private final static int MAX_USERS = 100;
-	private final static int MAX_WAITING_USERS = 10;
-	private final static long TIMEOUT = 20;
 	private ServerSocket mySocket;
 	String servername = null;
 	
@@ -59,15 +55,12 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		users = new HashMap<String, User>();
 		groups = new HashMap<String, ChatGroup>();
 		onlineNames = new HashSet<String>();
-		registeredUsers = new HashSet<String>();
 		lock = new ReentrantReadWriteLock(true);
-		waiting_users = new ArrayBlockingQueue<User>(MAX_WAITING_USERS);
 		isDown = false;
 	}
 	
-	public ChatServer(String name, int c_port, int s_port) throws IOException {
+	public ChatServer(int c_port) throws IOException {
 		this();
-		servername = name;
 		try {
 			mySocket = new ServerSocket(c_port);
 		} catch (Exception e) {
@@ -79,17 +72,15 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			e.printStackTrace();
 			return;
 		}
+	}
+	
+	public ChatServer(String name, int c_port, int s_port) throws IOException {
+		this(c_port);
+		servername = name;
 		this.start();
 	}
 	
 	private void initStructures() throws Exception {
-		//initialize registeredUsers
-		ResultSet Usernames = DBHandler.getUsers();
-		while(Usernames.next()) {
-			String s = Usernames.getString("username");
-			registeredUsers.add(s);
-		}
-		
 		//initialize groups as well as add group names to onlineNames
 		ResultSet Groupnames = DBHandler.getGroups();
 		while(Groupnames.next()) {
@@ -144,6 +135,18 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	}
 	
 	public Set<String> getAllUsers() {
+		ResultSet usernames;
+		Set<String> registeredUsers = new HashSet<String>();
+		try {
+			usernames = DBHandler.getUsers();
+			while(usernames.next()) {
+				String s = usernames.getString("username");
+				registeredUsers.add(s);
+			}
+		} catch (SQLException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		}
 		return registeredUsers;
 	}
 	
@@ -181,6 +184,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		lock.writeLock().lock();
 		Set<String> allNames = new HashSet<String>();
 		allNames.addAll(onlineNames);
+		Set<String> registeredUsers = getAllUsers();
 		allNames.addAll(registeredUsers);
 		if(allNames.contains(username)) {
 			lock.writeLock().unlock();
@@ -204,7 +208,6 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			e.printStackTrace();
 			return ServerReply.REJECTED;
 		}
-		registeredUsers.add(username);
 		lock.writeLock().unlock();
 		return ServerReply.OK;
 	}
@@ -223,10 +226,13 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	
 	public LoginError login(String username, String password) {
 		lock.writeLock().lock();
+		Set<String> registeredUsers = getAllUsers();
 		if (isDown || onlineNames.contains(username) || !registeredUsers.contains(username)) {
-			TestChatServer.logUserLoginFailed(username, new Date(), LoginError.USER_REJECTED);
-			lock.writeLock().unlock();
-			return LoginError.USER_REJECTED;
+			if(addUser(username,password) != ServerReply.OK){
+				TestChatServer.logUserLoginFailed(username, new Date(), LoginError.USER_REJECTED);
+				lock.writeLock().unlock();
+				return LoginError.USER_REJECTED;
+			}
 		}
 		LoginError error = loginAttempt(username, password);
 		lock.writeLock().unlock();
@@ -247,15 +253,8 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			e.printStackTrace();
 		}
 		if (users.size() >= MAX_USERS) {		//exceeds capacity
-			User newUser = new User(this, username);
-			if(waiting_users.offer(newUser)) {	//attempt to add to waiting queue 
-				onlineNames.add(username);
-				return LoginError.USER_QUEUED;
-			}
-			else {								//else drop user
-				TestChatServer.logUserLoginFailed(username, new Date(), LoginError.USER_DROPPED);
-				return LoginError.USER_DROPPED;				
-			}
+			TestChatServer.logUserLoginFailed(username, new Date(), LoginError.USER_DROPPED);
+			return LoginError.USER_DROPPED;				
 		}
 		User newUser = new User(this, username);
 		users.put(username, newUser);
@@ -283,19 +282,6 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	public boolean logoff(String username) {
 		lock.writeLock().lock();
 		if (!users.containsKey(username)){
-			User toRemove = null;
-			for (User u : waiting_users) {
-				if(u.getUsername().equals(username)) {
-					u.logoff();
-					toRemove = u;
-				}
-			}
-			if (toRemove != null) {
-				waiting_users.remove(toRemove);
-				onlineNames.remove(toRemove.getUsername());
-				lock.writeLock().unlock();
-				return true;
-			}
 			lock.writeLock().unlock();
 			return false;
 		}
@@ -313,18 +299,6 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		users.get(username).logoff();
 		onlineNames.remove(username);
 		users.remove(username);
-		
-		// Check for waiting users
-		User newUser = waiting_users.poll();
-		if (newUser != null) {							//add to ChatServer
-			String newUsername = newUser.getUsername();
-			users.put(newUsername, newUser);
-			TransportObject reply = new TransportObject(Command.login, ServerReply.OK);
-			newUser.queueReply(reply);
-			newUser.connected();
-			TestChatServer.logUserLogin(newUsername, new Date());
-			initUserGroups(newUser);
-		}
 		
 		lock.writeLock().unlock();	
 		return true;
@@ -347,7 +321,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			task.add(new Handler(params));
 			ObjectOutputStream sent = params.getOutputStream();
 			pool = Executors.newFixedThreadPool(10);
-			List<Future<Handler>> futures = pool.invokeAll(task, TIMEOUT, TimeUnit.SECONDS);
+			List<Future<Handler>> futures = pool.invokeAll(task);
 			if (futures.get(0).isCancelled()) {
 				TransportObject sendObject = new TransportObject(ServerReply.timeout);
 				sent.writeObject(sendObject);
@@ -448,6 +422,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		Message message = new Message(timestamp, source, dest, msg);
 		message.setSQN(sqn);
 		lock.readLock().lock();
+		Set<String> registeredUsers = getAllUsers();
 		if (users.containsKey(source)) {				//Valid destination user
 			if (users.containsKey(dest)) {
 				User destUser = users.get(dest);
@@ -520,7 +495,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			ExecutorService pool = null;
 			try {
 				pool = Executors.newFixedThreadPool(10);
-				List<Future<Handler>> futures = pool.invokeAll(task, TIMEOUT, TimeUnit.SECONDS);
+				List<Future<Handler>> futures = pool.invokeAll(task);
 				if (futures.get(0).isCancelled()) {
 					ObjectOutputStream sent = handler.sent;
 					TransportObject sendObject = new TransportObject(ServerReply.timeout);
@@ -579,15 +554,6 @@ public class ChatServer extends Thread implements ChatServerInterface {
 								sendObject = new TransportObject(Command.login, ServerReply.OK);
 								User newUser = (User) getUser(username);
 								newUser.setSocket(socket, received, sent);
-							} else if (loginError == LoginError.USER_QUEUED) {
-								sendObject = new TransportObject(Command.login, ServerReply.QUEUED);
-								User newUser = null;
-								for(User u : waiting_users) {
-									if(u.getUsername().equals(username))
-										newUser = u;
-								}
-								if(newUser != null)
-									newUser.setSocket(socket, received, sent);
 							} else if (loginError == LoginError.USER_DROPPED || loginError == LoginError.USER_REJECTED){
 								sendObject = new TransportObject(Command.login, ServerReply.REJECTED);
 								recObject = null;
@@ -600,24 +566,12 @@ public class ChatServer extends Thread implements ChatServerInterface {
 							} catch (IOException e) {
 								e.printStackTrace();
 							}	
-						} else if (type == Command.adduser) {
-							String username = recObject.getUsername();
-							String password = recObject.getPassword();
-							ServerReply reply = addUser(username,password);
-							TransportObject sendObject = new TransportObject(type,reply);
-							try {
-								sent.writeObject(sendObject);
-							} catch (IOException e) {
-								e.printStackTrace();
-							}
-							recObject = null;
 						} else {
 							recObject = null;
 						}
 					}
 		    	}
 		    	return null;
-			
 			}
 	}
 	
