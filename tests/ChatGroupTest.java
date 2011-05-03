@@ -35,7 +35,7 @@ public class ChatGroupTest {
 		server.joinGroup(server.getUser("A"), "newGroup");
 		Set<String> groups = server.getGroups();
 		ChatGroup newGroup = server.getGroup("newGroup");
-		HashMap<String, User> userlist = newGroup.getUserList();
+		Set<String> userlist = newGroup.getAllUsers();
 		assertTrue(groups.contains("newGroup") && userlist.size() == 1);
 	}
 	
@@ -46,9 +46,9 @@ public class ChatGroupTest {
 		server.joinGroup(server.getUser("B"), "newGroup");
 		Set<String> groups = server.getGroups();
 		ChatGroup newGroup = server.getGroup("newGroup");
-		HashMap<String, User> userlist = newGroup.getUserList();
-		assertTrue(userlist.keySet().contains("A") && userlist.keySet().contains("B")
-				&& userlist.keySet().size() == 2);
+		Set<String> userlist = newGroup.getAllUsers();
+		assertTrue(userlist.contains("A") && userlist.contains("B")
+				&& userlist.size() == 2);
 	}
 	
 	@Test
@@ -60,7 +60,7 @@ public class ChatGroupTest {
 		}
 		Set<String> groups = server.getGroups();
 		ChatGroup newGroup = server.getGroup("newGroup");
-		HashMap<String, User> userlist = newGroup.getUserList();
+		Set<String> userlist = newGroup.getAllUsers();
 		assertTrue(server.joinGroup(server.getUser("A"), "newGroup") == false &&
 				userlist.size() == 10);	
 	}
@@ -73,7 +73,7 @@ public class ChatGroupTest {
 		server.leaveGroup(server.getUser("A"), "newGroup");
 		Set<String> groups = server.getGroups();
 		ChatGroup newGroup = server.getGroup("newGroup");
-		HashMap<String, User> userlist = newGroup.getUserList();
+		Set<String> userlist = newGroup.getAllUsers();
 		assertTrue(userlist.size()==1);
 	}
 	

@@ -88,7 +88,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		while(Groupnames.next()) {
 			String g = Groupnames.getString("gname");
 			onlineNames.add(g);
-			groups.put(g, new ChatGroup(g));
+			groups.put(g, new ChatGroup(g, this));
 		}
 		
 		ResultSet Members = DBHandler.getMemberships();
@@ -98,6 +98,17 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			ChatGroup group = groups.get(g);
 			if(group != null)
 				group.addUser(u);
+		}
+	}
+	
+	private void initServerConnections(){
+		ResultSet servers = DBHandler.getServers();
+		while(servers.next()){
+			String name = servers.getString("name");
+			String ip = servers.getString("host");
+			int port = servers.getInt("port");
+			Socket s = new Socket(ip,port);
+			
 		}
 	}
 	
@@ -367,7 +378,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				lock.writeLock().unlock();
 				return false;
 			}
-			group = new ChatGroup(groupname);
+			group = new ChatGroup(groupname, this);
 			groups.put(groupname, group);
 			success = group.joinGroup(user.getUsername(), user);
 			user.addToGroups(groupname);
@@ -619,8 +630,8 @@ public class ChatServer extends Thread implements ChatServerInterface {
 					if(group == null)
 						System.err.println("no such group: " + tokens[1]);
 					else{
-						Map<String,User> userList = group.getUserList();
-						System.err.println(userList.keySet());
+						Set<String> userList = group.getAllUsers();
+						System.err.println(userList);
 					}
 				}
 			} else if (tokens[0].equals("shutdown")) {
