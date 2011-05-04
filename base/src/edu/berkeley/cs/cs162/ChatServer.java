@@ -26,6 +26,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -48,15 +49,15 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	private Set<String> onlineNames;
 	private ReentrantReadWriteLock lock;
 	private volatile boolean isDown;
-	private final static int MAX_USERS = 100;
 	private ServerSocket mySocket;
 	private ServerSocket serverSockets;
-	String servername = null;
+	private Thread listenForServers;
+	private String servername = null;
 	
 	public ChatServer() {
 		users = new HashMap<String, User>();
 		groups = new HashMap<String, ChatGroup>();
-		servers = new HashMap<String, ServerConnection>();
+		servers = new ConcurrentHashMap<String, ServerConnection>();
 		onlineNames = new HashSet<String>();
 		lock = new ReentrantReadWriteLock(true);
 		isDown = false;
@@ -66,7 +67,6 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		this();
 		try {
 			mySocket = new ServerSocket(c_port);
-			serverSockets = new ServerSocket(c_port+1); 
 		} catch (Exception e) {
 			throw new IOException("Server socket creation failed");
 		}
@@ -80,6 +80,22 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	
 	public ChatServer(String name, int c_port, int s_port) throws IOException {
 		this(c_port);
+		serverSockets = new ServerSocket(s_port);
+		listenForServers = new Thread(){
+			@Override
+			public void run(){
+				while(!isDown){
+					Socket newSocket;
+					try {
+						newSocket = serverSockets.accept();
+						ServerConnection newServer = new ServerConnection(newSocket,ChatServer.this);
+						newServer.start();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		};
 		servername = name;
 		this.start();
 	}
@@ -110,10 +126,12 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			ResultSet serverRows = DBHandler.getServers();
 			while(serverRows.next()){
 				String name = serverRows.getString("name");
+				if(name.equals(servername)) continue;
 				String ip = serverRows.getString("host");
 				int port = serverRows.getInt("port");
 				Socket s = new Socket(ip,port);
-				servers.put(name,new ServerConnection(s));
+				ServerConnection conn = new ServerConnection(s,this);
+				conn.start();
 			}
 		} catch (Exception e){
 			e.printStackTrace();
@@ -121,6 +139,8 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	}
 	
 	public boolean isDown() { return isDown; }
+	
+	public String getServername() { return servername; }
 	
 	@Override
 	public BaseUser getUser(String username) {
@@ -185,6 +205,14 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		num = groups.size();
 		lock.readLock().unlock();
 		return num;
+	}
+	
+	public void addServer(String name, ServerConnection conn){
+		servers.put(name, conn);
+	}
+	
+	public void removeServer(String name){
+		servers.remove(name);
 	}
 	
 	private void initUserGroups(User u){
@@ -272,10 +300,6 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-		}
-		if (users.size() >= MAX_USERS) {		//exceeds capacity
-			TestChatServer.logUserLoginFailed(username, new Date(), LoginError.USER_DROPPED);
-			return LoginError.USER_DROPPED;				
 		}
 		User newUser = new User(this, username);
 		users.put(username, newUser);
@@ -438,7 +462,31 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		isDown = true;
 		lock.writeLock().unlock();
 	}
-
+	
+	public MsgSendError forward(TransportObject toSend, String username){
+		List<Object> serverAddresses = null;
+		try {
+			serverAddresses = DBHandler.getServerAddresses(username);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return MsgSendError.MESSAGE_FAILED;
+		}
+		if(serverAddresses!=null){
+			ServerConnection home = servers.get(serverAddresses.get(4));
+			ServerConnection backup = servers.get(serverAddresses.get(5));
+			if(home!=null){
+				home.acceptMessage(toSend);
+			} else if(backup!=null){
+				backup.acceptMessage(toSend);
+			} else
+				return MsgSendError.MESSAGE_FAILED;
+			return MsgSendError.MESSAGE_SENT;
+		}
+		
+		return MsgSendError.MESSAGE_FAILED;
+	}
+	
+	//TODO call forward appropriately
 	public MsgSendError processMessage(String source, String dest, String msg, int sqn, String timestamp) {	
 		Message message = new Message(timestamp, source, dest, msg);
 		message.setSQN(sqn);
@@ -487,20 +535,9 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	
 	@Override
 	public void run(){
-		Thread listenForServers = new Thread(){
-			@Override
-			public void run(){
-				while(!isDown){
-					Socket newSocket;
-					try {
-						newSocket = serverSockets.accept();
-						
-					} catch (Exception e) {
-						
-					}
-				}
-			}
-		};
+		
+		listenForServers.start();
+		
 		while(!isDown){
 			List<Handler> task = new ArrayList<Handler>();
 			Socket newSocket;

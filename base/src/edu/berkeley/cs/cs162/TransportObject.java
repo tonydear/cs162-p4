@@ -15,6 +15,8 @@ public class TransportObject implements Serializable {
 	private double rtt_time;
 	private ServerReply reply;
 	
+	private String servername;
+	
 	//Default
 	public TransportObject() {
 		command = Command.NONE;
@@ -28,6 +30,7 @@ public class TransportObject implements Serializable {
 		timestamp = null;
 		reply = ServerReply.NONE;
 		password = null;
+		servername = null;
 	}
 	
 	//Default with cmd; client logout, disconnect
@@ -119,6 +122,11 @@ public class TransportObject implements Serializable {
 		this.reply = reply;
 	}
 	
+	public TransportObject(String name){
+		this();
+		this.servername = name;
+	}
+	
 	//Getters
 	public Command getCommand() { return command; }	
 	public String getUsername() { return username; }
@@ -131,4 +139,5 @@ public class TransportObject implements Serializable {
 	public String getMessage() { return msg; }
 	public ServerReply getServerReply() { return reply; }
 	public String getTimestamp() { return timestamp; }
+	public String getServername() { return servername; }
 }

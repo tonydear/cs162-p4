@@ -253,6 +253,10 @@ public class DBHandler {
     	addresses.add(rs2.getString("host"));
     	addresses.add(rs2.getInt("port"));
     	
+    	//Add names
+    	addresses.add(homeServer);
+    	addresses.add(backupServer);
+    	
     	return addresses;
     }
     
