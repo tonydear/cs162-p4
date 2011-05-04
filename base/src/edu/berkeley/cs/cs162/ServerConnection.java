@@ -13,6 +13,8 @@ public class ServerConnection extends Thread {
 	private Socket mySocket;
 	private BlockingQueue<TransportObject> toSend;
 	private final static int MAX_SEND = 10000;
+	private Thread receiver; 
+	private Thread sender;
 	
 	public ServerConnection(Socket socket){
 		mySocket = socket;
@@ -26,8 +28,12 @@ public class ServerConnection extends Thread {
 		toSend = new ArrayBlockingQueue<TransportObject>(MAX_SEND);
 	}
 	
+	private boolean queueSend(TransportObject msg) {
+		return toSend.add(msg);
+	}
+	
 	public void forwardMessage(TransportObject sendMe){ //send things out
-		
+		queueSend(sendMe);
 	}
 	
 	public void run(){ //listen for messages
