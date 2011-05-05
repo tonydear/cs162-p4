@@ -110,11 +110,11 @@ public abstract class AbstractChatClient extends Thread{
 
 			this.username = user;
 			this.password = pass;
-			List<Object> serverInfo = DBHandler.getServerAddresses(username, false);
-			homeIP = (String) serverInfo.get(0);
-			homePort = (Integer) serverInfo.get(1);
-			backupIP = (String) serverInfo.get(2);
-			backupPort = (Integer) serverInfo.get(3);
+			List<String> serverNames = DBHandler.getServerNames(username);
+			homeIP = DBHandler.getIP(serverNames.get(0));
+			homePort = DBHandler.getClientPort(serverNames.get(0));
+			backupIP = DBHandler.getIP(serverNames.get(1));
+			backupPort = DBHandler.getClientPort(serverNames.get(1));
 			System.out.println(homeIP + " " + homePort);
 			try {
 				mySocket = new Socket(homeIP, homePort);
