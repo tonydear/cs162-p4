@@ -36,6 +36,7 @@ public class ServerConnection extends Thread {
 		toSend = new ArrayBlockingQueue<TransportObject>(MAX_SEND);
 	}
 	
+
 	public void acceptMessage(TransportObject sendMe){ //send things out
 		toSend.add(sendMe);
 	}

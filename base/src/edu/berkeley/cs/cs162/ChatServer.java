@@ -10,10 +10,10 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
-import java.sql.ResultSet;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -22,15 +22,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This is the core of the chat server.  Put the management of groups
@@ -493,18 +490,16 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		lock.readLock().lock();
 		Set<String> registeredUsers = getAllUsers();
 		if (users.containsKey(source)) {				//Valid destination user
+			if(!registeredUsers.contains(dest)) {
+				MsgSendError sendError = MsgSendError.INVALID_DEST;
+				lock.readLock().unlock();
+				return sendError;
+			}
 			if (users.containsKey(dest)) {
+				
 				User destUser = users.get(dest);
 				destUser.acceptMsg(message);
-			}
-			else if (registeredUsers.contains(dest)) {	//Registered offline user
-				try {
-					DBHandler.writeLog(message, dest);
-				} catch (SQLException e) {
-					e.printStackTrace();
-				}
-			}
-			else if (groups.containsKey(dest)) {		//Group destination
+			} else if (groups.containsKey(dest)) {		//Group destination
 				message.setIsFromGroup();
 				ChatGroup group = groups.get(dest);
 				MsgSendError sendError = group.forwardMessage(message);
@@ -518,9 +513,12 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				}
 				
 			} else {
-				TestChatServer.logChatServerDropMsg(message.toString(), new Date());
+				// If dest user is not on this server, forward it. 
+				//TestChatServer.logChatServerDropMsg(message.toString(), new Date());
+				TransportObject toSend = new TransportObject(source, dest ,sqn, msg, timestamp);
+				MsgSendError sendError = forward(toSend, source); 
 				lock.readLock().unlock();
-				return MsgSendError.INVALID_DEST;
+				return sendError;
 			}
 			
 		} else {
