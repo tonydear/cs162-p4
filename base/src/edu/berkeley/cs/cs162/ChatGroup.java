@@ -107,30 +107,11 @@ public class ChatGroup {
 		while(it.hasNext()) {
 			//check which server does it belong to
 			String username = it.next();
-			List<Object> serverAddresses;
-			try {
-				serverAddresses = DBHandler.getServerAddresses(username, true);
-			} catch (SQLException e) {
-				e.printStackTrace();
-				return MsgSendError.MESSAGE_FAILED;
-			}
-			if(serverAddresses == null)
-				return MsgSendError.MESSAGE_FAILED;
-			String home = (String) serverAddresses.get(4);
-			
+			User u = (User) myServer.getUser(username);
+
 			//if this one get user and call accept message
-			if(home == myServer.getName()) {
-				User u = (User) myServer.getUser(username);
-				if(u == null) {
-					try {
-						DBHandler.writeLog(msg, username);
-					} catch (SQLException e) {
-						e.printStackTrace();
-					}
-				}
-				else {
-					success = u.acceptMsg(msg);
-				}
+			if(u != null) {
+				success = u.acceptMsg(msg) && success;
 			}
 			else {	//else use the server to forward to appropriate server
 				TransportObject toSend = new TransportObject(ServerReply.receive,msg.getSource(),
