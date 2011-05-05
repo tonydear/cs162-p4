@@ -129,49 +129,50 @@ public abstract class AbstractChatClient extends Thread{
 						
 						@Override
 						public void run(){
-							while(true) {
-								try {
-									
-									homeSocket = new Socket(homeIP, homePort);
-									TransportObject toSend = new TransportObject(Command.logout);
+							synchronized(AbstractChatClient.this){
+								while(true) {
 									try {
-										sent.writeObject(toSend);
-										printLogAck = false;
-										isWaiting = true;
-										reply = Command.logout;
-										this.wait();
-									} catch (Exception e) {
+										homeSocket = new Socket(homeIP, homePort);
+										TransportObject toSend = new TransportObject(Command.logout);
+										try {
+											sent.writeObject(toSend);
+											printLogAck = false;
+											isWaiting = true;
+											reply = Command.logout;
+											AbstractChatClient.this.wait();
+										} catch (Exception e) {
+											e.printStackTrace();
+										}
+										mySocket = homeSocket;
+										sent = new ObjectOutputStream(mySocket.getOutputStream());
+										InputStream input = mySocket.getInputStream();
+										received = new ObjectInputStream(input);
+										if (!connected && (!isLoggedIn || !isQueued))
+											return;
+										TransportObject toSendLogin = new TransportObject(Command.login, username, password);
+										try {
+											isWaiting = true;
+											reply = Command.login;
+											sent.writeObject(toSendLogin);
+											AbstractChatClient.this.wait();
+										} catch (Exception e) {
+
+										}
+										connectedToHome = true;
+										break;
+									} catch (UnknownHostException e1) {
+										// TODO Auto-generated catch block
+										//e1.printStackTrace();
+									} catch (IOException e1) {
+										// TODO Auto-generated catch block
+										//e1.printStackTrace();
+									}
+									try {
+										sleep(1000);
+									} catch (InterruptedException e) {
+										// TODO Auto-generated catch block
 										e.printStackTrace();
 									}
-									mySocket = homeSocket;
-									sent = new ObjectOutputStream(mySocket.getOutputStream());
-									InputStream input = mySocket.getInputStream();
-									received = new ObjectInputStream(input);
-									if (!connected && (!isLoggedIn || !isQueued))
-										return;
-									TransportObject toSendLogin = new TransportObject(Command.login, username, password);
-									try {
-										isWaiting = true;
-										reply = Command.login;
-										sent.writeObject(toSendLogin);
-										this.wait();
-									} catch (Exception e) {
-										
-									}
-									connectedToHome = true;
-									break;
-								} catch (UnknownHostException e1) {
-									// TODO Auto-generated catch block
-									//e1.printStackTrace();
-								} catch (IOException e1) {
-									// TODO Auto-generated catch block
-									//e1.printStackTrace();
-								}
-								try {
-									sleep(1000);
-								} catch (InterruptedException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
 								}
 							}
 						}
@@ -293,48 +294,50 @@ public abstract class AbstractChatClient extends Thread{
 				private Socket homeSocket;
 				@Override
 				public void run(){
-					while(true) {
-						try {
-							homeSocket = new Socket(homeIP, homePort);
-							TransportObject toSend = new TransportObject(Command.logout);
+					synchronized(AbstractChatClient.this){
+						while(true) {
 							try {
-								sent.writeObject(toSend);
-								isWaiting = true;
-								reply = Command.logout;
-								this.wait();
-							} catch (Exception e) {
+								homeSocket = new Socket(homeIP, homePort);
+								TransportObject toSend = new TransportObject(Command.logout);
+								try {
+									sent.writeObject(toSend);
+									isWaiting = true;
+									reply = Command.logout;
+									AbstractChatClient.this.wait();
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
+								mySocket = homeSocket;
+								sent = new ObjectOutputStream(mySocket.getOutputStream());
+								InputStream input = mySocket.getInputStream();
+								received = new ObjectInputStream(input);
+								connected = true;
+								connectedToHome = true;
+								if (!connected && (!isLoggedIn || !isQueued))
+									return;
+								TransportObject toSendLogin = new TransportObject(Command.login, username, password);
+								try {
+									isWaiting = true;
+									reply = Command.login;
+									sent.writeObject(toSendLogin);
+									AbstractChatClient.this.wait();
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
+								break;
+							} catch (UnknownHostException e1) {
+								// TODO Auto-generated catch block
+								e1.printStackTrace();
+							} catch (IOException e1) {
+								// TODO Auto-generated catch block
+								e1.printStackTrace();
+							}
+							try {
+								sleep(1000);
+							} catch (InterruptedException e) {
+								// TODO Auto-generated catch block
 								e.printStackTrace();
 							}
-							mySocket = homeSocket;
-							sent = new ObjectOutputStream(mySocket.getOutputStream());
-							InputStream input = mySocket.getInputStream();
-							received = new ObjectInputStream(input);
-							connected = true;
-							connectedToHome = true;
-							if (!connected && (!isLoggedIn || !isQueued))
-								return;
-							TransportObject toSendLogin = new TransportObject(Command.login, username, password);
-							try {
-								isWaiting = true;
-								reply = Command.login;
-								sent.writeObject(toSendLogin);
-								this.wait();
-							} catch (Exception e) {
-								e.printStackTrace();
-							}
-							break;
-						} catch (UnknownHostException e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
-						} catch (IOException e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
-						}
-						try {
-							sleep(1000);
-						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
 						}
 					}
 				}
