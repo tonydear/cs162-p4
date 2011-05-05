@@ -124,8 +124,14 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				String name = serverRows.getString("name");
 				if(name.equals(servername)) continue;
 				String ip = serverRows.getString("host");
+
 				int port = DBHandler.getServerPort(name);
-				Socket s = new Socket(ip,port);
+				Socket s;
+				try {
+					s = new Socket(ip,port);
+				} catch (Exception e){
+					continue;
+				}
 				ServerConnection conn = new ServerConnection(s,this);
 				System.out.println(name + " " + servername + "got");
 				conn.setup();
@@ -494,15 +500,22 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			e.printStackTrace();
 			return MsgSendError.MESSAGE_FAILED;
 		}
-		if(serverNames!=null){
+		if (serverNames != null){
 			ServerConnection home = servers.get(serverNames.get(0));
 			ServerConnection backup = servers.get(serverNames.get(1));
-			if(home!=null){
+			if (home != null){
 				System.out.println("accept me for who i am");
 				home.acceptMessage(toSend);
 				System.out.println("sending to " + username + " " + home.getName());
-			} else if(backup!=null){
+			} else if (backup != null){
 				backup.acceptMessage(toSend);
+			} else if (serverNames.get(1) != null && serverNames.get(1).equals(servername)){
+				Message msg = new Message(toSend.getTimestamp(), toSend.getSender(), toSend.getDest(), toSend.getMessage());
+				try {
+					DBHandler.writeLog(msg, username);
+				} catch (SQLException e) {
+					return MsgSendError.MESSAGE_FAILED;
+				}
 			} else
 				return MsgSendError.MESSAGE_FAILED;
 			return MsgSendError.MESSAGE_SENT;
