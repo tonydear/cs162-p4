@@ -264,7 +264,7 @@ public abstract class AbstractChatClient extends Thread{
 	
 	protected abstract void send(String dest, int sqn, String msg);
 	
-	private void switchToBackup() {
+	private synchronized void switchToBackup() {
 		connected = false;
 		if (connectedToHome) {
 			try {
