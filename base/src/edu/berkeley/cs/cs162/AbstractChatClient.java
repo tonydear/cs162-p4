@@ -293,13 +293,17 @@ public abstract class AbstractChatClient extends Thread{
 				System.err.println("backup server connection failed");
 				e1.printStackTrace();
 			} 
+			System.out.println("about to create homepoller thread");
 			homePoller = new Thread() {
 				private Socket homeSocket;
 				@Override
 				public void run(){
+					System.out.println("starting run of home poller");
 					while(true) {
+						System.out.println("starting while loop of hom epoller");
 						synchronized(AbstractChatClient.this){
 							try {
+								System.out.println("polling");
 								homeSocket = new Socket(homeIP, homePort);
 								TransportObject toSend = new TransportObject(Command.logout);
 								try {
@@ -364,8 +368,14 @@ public abstract class AbstractChatClient extends Thread{
 			connected = false;
 			return;
 		} catch (EOFException e) {
+			Thread backupThread = new Thread() {
+				public void run() {
+					switchToBackup();
+				}
+			};
+			backupThread.start();
 			System.out.println("about to switch to backup");
-			switchToBackup();
+			
 			return;
 		}
 		catch (Exception e) {
