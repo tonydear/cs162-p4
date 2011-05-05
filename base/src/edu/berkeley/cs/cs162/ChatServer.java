@@ -430,7 +430,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			success = group.joinGroup(user.getUsername(), user);
 			user.addToGroups(groupname);
 			TestChatServer.logUserJoinGroup(groupname, user.getUsername(), new Date());
-			Set<String> grps = null;
+			Set<String> grps = new HashSet<String>();
 			try {
 				ResultSet rs = DBHandler.getGroups();
 				while(rs.next()) {
