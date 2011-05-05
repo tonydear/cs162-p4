@@ -136,7 +136,12 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				if(name.equals(servername)) continue;
 				String ip = serverRows.getString("host");
 				int port = DBHandler.getPort(name, true);
-				Socket s = new Socket(ip,port);
+				Socket s;
+				try {
+					s = new Socket(ip,port);
+				} catch (Exception e){
+					continue;
+				}
 				ServerConnection conn = new ServerConnection(s,this);
 				System.out.println(name + " " + servername + "got");
 				conn.setup();
