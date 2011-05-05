@@ -53,8 +53,10 @@ public class ServerConnection{
 					TransportObject msg = null;
 					try {
 						msg = toSend.poll(3, TimeUnit.SECONDS);
-						if(msg != null)
+						if(msg != null) {
 							oos.writeObject(msg);
+							System.out.println("sending " + msg.getMessage());
+						}
 					} catch (SocketException e) {
 						System.err.println(e);
 						deleteSelf();
@@ -62,6 +64,7 @@ public class ServerConnection{
 						deleteSelf();
 					}
 				}
+				System.out.println("i'm done running");
 			}
 			
 		};
@@ -80,6 +83,7 @@ public class ServerConnection{
 						e.printStackTrace();
 					}
 				}
+				System.out.println("i'm done running receiver");
 			}
 		};
 		receiver.start();
