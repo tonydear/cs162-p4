@@ -514,6 +514,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			ServerConnection home = servers.get(serverAddresses.get(4));
 			ServerConnection backup = servers.get(serverAddresses.get(5));
 			if(home!=null){
+				System.out.println("accept me for who i am");
 				home.acceptMessage(toSend);
 				System.out.println("sending to " + username + " " + home.getName());
 			} else if(backup!=null){
@@ -568,7 +569,9 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				// If dest user is not on this server, forward it. 
 				//TestChatServer.logChatServerDropMsg(message.toString(), new Date());
 				TransportObject toSend = new TransportObject(source, dest ,sqn, msg, timestamp);
+				System.out.println("I'm going forward!");
 				MsgSendError sendError = forward(toSend, source); 
+				System.out.println("forwarded");
 				lock.readLock().unlock();
 				return sendError;
 			}
