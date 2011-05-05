@@ -53,7 +53,7 @@ public class TransportObject implements Serializable {
 	// Server to server
 	public TransportObject(String sender, String dest, int sqn, String msg,
 			String timestamp) {
-		super();
+		;
 		this.sender = sender;
 		this.dest = dest;
 		this.sqn = sqn;
