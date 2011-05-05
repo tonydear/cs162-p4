@@ -131,6 +131,7 @@ public abstract class AbstractChatClient extends Thread{
 						public void run(){
 							while(true) {
 								synchronized(AbstractChatClient.this){
+									//System.out.println("new polling");
 									try {
 										homeSocket = new Socket(homeIP, homePort);
 										TransportObject toSend = new TransportObject(Command.logout);
@@ -212,6 +213,7 @@ public abstract class AbstractChatClient extends Thread{
 		try {
 			isWaiting = true;
 			reply = Command.login;
+			System.out.println("sending initial login obj");
 			sent.writeObject(toSend);
 			this.wait();
 		} catch (Exception e) {
