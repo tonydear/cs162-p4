@@ -73,7 +73,9 @@ public abstract class AbstractChatClient extends Thread{
 		            @Override
 		            public void run(){
 		            	while(connected){
+		            		System.out.println("about to begin receive");
 		            		receive();
+		            		System.out.println("finished receive");
 		            	}
 		            }
 		        };
@@ -200,7 +202,9 @@ public abstract class AbstractChatClient extends Thread{
 		            @Override
 		            public void run(){
 		            	while(connected){
+		            		System.out.println("about to receive");
 		            		receive();
+		            		System.out.println("finished receiving");
 		            	}
 		            }
 		        };
@@ -336,7 +340,18 @@ public abstract class AbstractChatClient extends Thread{
 									reply = Command.login;
 									sent.writeObject(toSendLogin);
 									System.out.println("about to wait");
-		
+									receiver = new Thread(){
+							            @Override
+							            public void run(){
+							            	while(connected){
+							            		System.out.println("about to receive");
+							            		receive();
+							            		System.out.println("finished receiving");
+							            	}
+							            }
+							        };
+									receiver.start();
+									
 								} catch (Exception e) {
 									e.printStackTrace();
 								}
@@ -413,7 +428,7 @@ public abstract class AbstractChatClient extends Thread{
 				if(reply.equals(Command.logout)) {
 					connected = false;
 					isLoggedIn = false;
-					
+						
 				}
 				if(reply.equals(Command.login) || reply.equals(Command.logout)) {
 					if(reply.equals(Command.login)) {
@@ -516,7 +531,7 @@ public abstract class AbstractChatClient extends Thread{
 	
 	public void processCommands() throws Exception {
 		int x = 0;
-		
+		System.out.println("x is " + x + " befor eloop");
 		while(returnVar){
 			x=1;
 		}

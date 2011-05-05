@@ -684,6 +684,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 								recObject = null;
 							}
 							try {
+								System.out.println("server replying to clientt: " + sendObject.getCommand() + sendObject.getServerReply() + servername);
 								sent.writeObject(sendObject);
 							} catch (IOException e) {
 								e.printStackTrace();
