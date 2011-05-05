@@ -115,7 +115,7 @@ public class ChatGroup {
 			}
 			else {	//else use the server to forward to appropriate server
 				TransportObject toSend = new TransportObject(ServerReply.receive,msg.getSource(),
-						msg.getDest(),msg.getContent(),msg.getTimestamp(),msg.getSQN());
+						username,msg.getContent(),msg.getTimestamp(),msg.getSQN());
 				MsgSendError response = myServer.forward(toSend, username);
 				if(response == MsgSendError.MESSAGE_FAILED)
 					returnval = MsgSendError.MESSAGE_FAILED;
