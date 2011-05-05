@@ -167,12 +167,12 @@ public abstract class AbstractChatClient extends Thread{
 										// TODO Auto-generated catch block
 										//e1.printStackTrace();
 									}
-									try {
-										sleep(1000);
-									} catch (InterruptedException e) {
-										// TODO Auto-generated catch block
-										e.printStackTrace();
-									}
+								}
+								try {
+									sleep(1000);
+								} catch (InterruptedException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
 								}
 							}
 						}
@@ -265,7 +265,7 @@ public abstract class AbstractChatClient extends Thread{
 	
 	protected abstract void send(String dest, int sqn, String msg);
 	
-	private void switchToBackup() {
+	private synchronized void switchToBackup() {
 		connected = false;
 		System.out.println("home went down! switching to backup beep beep");
 		if (connectedToHome) {
@@ -333,12 +333,13 @@ public abstract class AbstractChatClient extends Thread{
 								// TODO Auto-generated catch block
 								//e1.printStackTrace();
 							}
-							try {
-								sleep(1000);
-							} catch (InterruptedException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
+						}
+						System.out.println("released");
+						try {
+							sleep(1000);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
 						}
 					}
 				}
