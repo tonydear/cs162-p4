@@ -110,7 +110,7 @@ public class ChatGroup {
 			String username = it.next();
 			List<Object> serverAddresses;
 			try {
-				serverAddresses = DBHandler.getServerAddresses(username);
+				serverAddresses = DBHandler.getServerAddresses(username, true);
 			} catch (SQLException e) {
 				e.printStackTrace();
 				return MsgSendError.MESSAGE_FAILED;
