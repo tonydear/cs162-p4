@@ -19,7 +19,7 @@ public class TestChatServer {
 	public static void main(String [] args) throws InterruptedException {
 		ChatServerInterface s = null;
 		try {
-			s = new ChatServer(0);
+			s = new ChatServer(0,"HELLO");
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();

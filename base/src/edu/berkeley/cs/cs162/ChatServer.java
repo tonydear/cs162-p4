@@ -60,9 +60,18 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		isDown = false;
 	}
 	
-	public ChatServer(int c_port) throws IOException {
+	public ChatServer(int c_port, String name) throws IOException {
 		this();
+		servername = name;
 		try {
+			if(c_port==-1){
+				try {
+					c_port = DBHandler.getPort(servername,false);
+				} catch (Exception e){
+					e.printStackTrace();
+					return;
+				}
+			}
 			mySocket = new ServerSocket(c_port);
 		} catch (Exception e) {
 			throw new IOException("Server socket creation failed");
@@ -76,8 +85,17 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	}
 	
 	public ChatServer(String name, int c_port, int s_port) throws IOException {
-		this(c_port);
+		this(c_port,name);
+		if(s_port==-1){
+			try {
+			s_port = DBHandler.getPort(name,true);
+			} catch (Exception e){
+				e.printStackTrace();
+				return;
+			}
+		}
 		serverSockets = new ServerSocket(s_port);
+		if(mySocket==null||serverSockets==null) return;
 		listenForServers = new Thread(){
 			@Override
 			public void run(){
@@ -93,7 +111,6 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				}
 			}
 		};
-		servername = name;
 		this.start();
 	}
 	
