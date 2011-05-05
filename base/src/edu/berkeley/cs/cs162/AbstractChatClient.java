@@ -327,10 +327,10 @@ public abstract class AbstractChatClient extends Thread{
 								break;
 							} catch (UnknownHostException e1) {
 								// TODO Auto-generated catch block
-								e1.printStackTrace();
+								//e1.printStackTrace();
 							} catch (IOException e1) {
 								// TODO Auto-generated catch block
-								e1.printStackTrace();
+								//e1.printStackTrace();
 							}
 							try {
 								sleep(1000);
