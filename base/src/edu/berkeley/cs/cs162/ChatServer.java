@@ -514,6 +514,13 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				System.out.println("sending to " + username + " " + home.getName());
 			} else if(backup!=null){
 				backup.acceptMessage(toSend);
+			} else if(serverAddresses.get(5)!=null&&serverAddresses.get(5).equals(servername)){
+				Message msg = new Message(toSend.getTimestamp(),toSend.getSender(),toSend.getDest(),toSend.getMessage());
+				try {
+					DBHandler.writeLog(msg, username);
+				} catch (SQLException e) {
+					return MsgSendError.MESSAGE_FAILED;
+				}
 			} else
 				return MsgSendError.MESSAGE_FAILED;
 			return MsgSendError.MESSAGE_SENT;
