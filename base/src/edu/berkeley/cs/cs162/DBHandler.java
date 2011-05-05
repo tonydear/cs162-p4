@@ -58,14 +58,6 @@ public class DBHandler {
     	}
     }
     
-    public static void addPorts(String name, int serverPort, int clientPort) throws SQLException {
-    	PreparedStatement pstmt = conn.prepareStatement("INSERT INTO server_ports (name, server_port, client_port) VALUES (?,?,?)");
-    	pstmt.setString(1, name);
-    	pstmt.setInt(2, serverPort);
-    	pstmt.setInt(3, clientPort);
-    	pstmt.executeUpdate();
-    }
-    
     public static void writeLog(Message msg, String recipient) throws SQLException{
     	PreparedStatement pstmt = null;
     	pstmt = conn.prepareStatement("INSERT INTO Messages (sender, sqn, timestamp, destination, message, recipient) " + 
@@ -188,34 +180,31 @@ public class DBHandler {
     	return pstmt.executeQuery();
     }
     
-    public static int getPort(String name, boolean forServer) throws SQLException {
-    	PreparedStatement pstmt;
-    	ResultSet rs;
-    	if (forServer)
-    		pstmt = conn.prepareStatement("SELECT server_port FROM server_ports WHERE name = ?");
-    	else
-    		pstmt = conn.prepareStatement("SELECT client_port FROM server_ports WHERE name = ?");
+    public static String getIP(String name) throws SQLException {
+    	PreparedStatement pstmt = conn.prepareStatement("SELECT host FROM server_info WHERE name = ?");
     	pstmt.setString(1, name);
-    	rs = pstmt.executeQuery();
-    	if (rs.next()) {
-    		if (forServer)
-    			return rs.getInt("server_port");
-    		else
-    			return rs.getInt("client_port");
-    	}
-    	
-    	pstmt = conn.prepareStatement("SELECT id FROM server_info WHERE name = ?");
-    	pstmt.setString(1, name);
-    	rs = pstmt.executeQuery();
+    	ResultSet rs = pstmt.executeQuery();
     	rs.next();
-    	int id = rs.getInt("id");
-    	if (forServer)
-    		return id + 8080;
-    	else
-    		return id + 4747;
+    	return rs.getString("host");     	
     }
     
-    public static List<Object> getServerAddresses(String username, boolean forServer) throws SQLException {
+    public static int getServerPort(String name) throws SQLException {
+    	PreparedStatement pstmt = conn.prepareStatement("SELECT s_port FROM server_info WHERE name = ?");
+    	pstmt.setString(1, name);
+    	ResultSet rs = pstmt.executeQuery();
+    	rs.next();
+    	return rs.getInt("s_port");  
+    }
+    
+    public static int getClientPort(String name) throws SQLException {
+    	PreparedStatement pstmt = conn.prepareStatement("SELECT c_port FROM server_info WHERE name = ?");
+    	pstmt.setString(1, name);
+    	ResultSet rs = pstmt.executeQuery();
+    	rs.next();
+    	return rs.getInt("c_port");   	
+    }
+    
+    public static List<String> getServerNames(String username) throws SQLException {
     	//Query for all server names
     	HashMap<BigInteger, String> serverHashes = new HashMap<BigInteger, String>();
     	PreparedStatement allServers = conn.prepareStatement("SELECT name FROM server_info");
@@ -269,33 +258,11 @@ public class DBHandler {
 			second = hashes.get(0);
 		
 		//Get server names corresponding to the hashes
-		String homeServer = serverHashes.get(first);
-		String backupServer = serverHashes.get(second);
+		List<String> addresses = new ArrayList<String>();
+		addresses.add(serverHashes.get(first));
+		addresses.add(serverHashes.get(second));
 		
-		//Query for host and port for those two servers
-    	PreparedStatement stmt1 = conn.prepareStatement("SELECT host, id FROM server_info WHERE name = ?");
-    	stmt1.setString(1, homeServer);
-    	ResultSet rs1 = stmt1.executeQuery();
-    	
-    	PreparedStatement stmt2 = conn.prepareStatement("SELECT host, id FROM server_info WHERE name = ?");
-    	stmt2.setString(1, backupServer);
-    	ResultSet rs2 = stmt2.executeQuery();
-    	
-    	//Construct results and return
-    	List<Object> addresses = new ArrayList<Object>();
-    	rs1.next();
-    	addresses.add(rs1.getString("host"));
-    	addresses.add(getPort(homeServer, forServer));
-    	
-    	rs2.next();
-    	addresses.add(rs2.getString("host"));
-    	addresses.add(getPort(backupServer, forServer));
-    	
-    	//Add names
-    	addresses.add(homeServer);
-    	addresses.add(backupServer);
-    	
-    	return addresses;
+		return addresses;
     }
     
     public static void addRTT(double rtt, String username) throws SQLException {

@@ -60,44 +60,33 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		isDown = false;
 	}
 	
-	public ChatServer(int c_port, String name) throws IOException {
+	public ChatServer(String name) throws IOException {
 		this();
 		servername = name;
+		int s_port, c_port;
 		try {
-			if(c_port==-1){
-				try {
-					c_port = DBHandler.getPort(servername,false);
-				} catch (Exception e){
-					e.printStackTrace();
-					return;
-				}
-			}
+			s_port = DBHandler.getServerPort(name);
+			c_port = DBHandler.getClientPort(name);
+		} catch (Exception e) {
+			System.out.println("Failed to get ports");
+			return;
+		}
+		
+		try {
 			mySocket = new ServerSocket(c_port);
 		} catch (Exception e) {
 			throw new IOException("Server socket creation failed");
 		}
 		try {
-
 			System.out.println("initing structures");
 			initStructures();
 		} catch (Exception e){
 			e.printStackTrace();
 			return;
 		}
-	}
-	
-	public ChatServer(String name, int c_port, int s_port) throws IOException {
-		this(c_port,name);
-		if(s_port==-1){
-			try {
-			s_port = DBHandler.getPort(name,true);
-			} catch (Exception e){
-				e.printStackTrace();
-				return;
-			}
-		}
+		
 		serverSockets = new ServerSocket(s_port);
-		if(mySocket==null||serverSockets==null) return;
+		if (mySocket == null || serverSockets == null) return;
 		listenForServers = new Thread(){
 			@Override
 			public void run(){
@@ -105,7 +94,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 					Socket newSocket;
 					try {
 						newSocket = serverSockets.accept();
-						ServerConnection newServer = new ServerConnection(newSocket,ChatServer.this);
+						ServerConnection newServer = new ServerConnection(newSocket, ChatServer.this);
 						newServer.setup();
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -135,7 +124,8 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				String name = serverRows.getString("name");
 				if(name.equals(servername)) continue;
 				String ip = serverRows.getString("host");
-				int port = DBHandler.getPort(name, true);
+
+				int port = DBHandler.getServerPort(name);
 				Socket s;
 				try {
 					s = new Socket(ip,port);
@@ -503,24 +493,24 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	}
 	
 	public MsgSendError forward(TransportObject toSend, String username){
-		List<Object> serverAddresses = null;
+		List<String> serverNames = null;
 		try {
-			serverAddresses = DBHandler.getServerAddresses(username, true);
+			serverNames = DBHandler.getServerNames(username);
 		} catch (SQLException e) {
 			e.printStackTrace();
 			return MsgSendError.MESSAGE_FAILED;
 		}
-		if(serverAddresses!=null){
-			ServerConnection home = servers.get(serverAddresses.get(4));
-			ServerConnection backup = servers.get(serverAddresses.get(5));
-			if(home!=null){
+		if (serverNames != null){
+			ServerConnection home = servers.get(serverNames.get(0));
+			ServerConnection backup = servers.get(serverNames.get(1));
+			if (home != null){
 				System.out.println("accept me for who i am");
 				home.acceptMessage(toSend);
 				System.out.println("sending to " + username + " " + home.getName());
-			} else if(backup!=null){
+			} else if (backup != null){
 				backup.acceptMessage(toSend);
-			} else if(serverAddresses.get(5)!=null&&serverAddresses.get(5).equals(servername)){
-				Message msg = new Message(toSend.getTimestamp(),toSend.getSender(),toSend.getDest(),toSend.getMessage());
+			} else if (serverNames.get(1) != null && serverNames.get(1).equals(servername)){
+				Message msg = new Message(toSend.getTimestamp(), toSend.getSender(), toSend.getDest(), toSend.getMessage());
 				try {
 					DBHandler.writeLog(msg, username);
 				} catch (SQLException e) {
@@ -712,15 +702,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	}
 	
 	public static void main(String[] args) throws Exception{
-		int clientport = -1;
-		int serverport = -1;
-		if(args.length == 6) {
-			if(!"--name".equals(args[0]) || !"--c_port".equals(args[2]) || !"--s_port".equals(args[4]))
-				throw new Exception("Invalid parameter args");
-			clientport = Integer.parseInt(args[3]);
-			serverport = Integer.parseInt(args[5]);
-		}
-		else if(args.length == 2) {
+		if(args.length == 2) {
 			if(!"--name".equals(args[0]))
 				throw new Exception("Invalid parameter args");
 		}
@@ -729,10 +711,8 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		}
 			
 		String servername = args[1];
-		if(clientport != -1)
-			DBHandler.addPorts(servername,serverport,clientport);
-		
-		ChatServer chatServer = new ChatServer(servername,clientport,serverport);
+
+		ChatServer chatServer = new ChatServer(servername);
 		BufferedReader commands = new BufferedReader(new InputStreamReader(System.in));
 		while (!chatServer.isDown()) {
 			String line = commands.readLine();
