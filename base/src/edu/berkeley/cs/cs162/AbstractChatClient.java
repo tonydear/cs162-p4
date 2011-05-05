@@ -107,6 +107,7 @@ public abstract class AbstractChatClient extends Thread{
 				System.err.println("already connected");
 				return;
 			}
+
 			this.username = user;
 			this.password = pass;
 			List<Object> serverInfo = DBHandler.getServerAddresses(username);

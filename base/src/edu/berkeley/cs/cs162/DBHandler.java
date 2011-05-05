@@ -180,7 +180,7 @@ public class DBHandler {
     	return pstmt.executeQuery();
     }
     
-    public static List<Object> getServerAddresses(String username) throws SQLException {
+    public static List<Object> getServerAddresses(String username, boolean forServer) throws SQLException {
     	//Query for all server names
     	HashMap<BigInteger, String> serverHashes = new HashMap<BigInteger, String>();
     	PreparedStatement allServers = conn.prepareStatement("SELECT name FROM server_info");
@@ -238,7 +238,7 @@ public class DBHandler {
 		String backupServer = serverHashes.get(second);
 		
 		//Query for host and port for those two servers
-    	PreparedStatement stmt = conn.prepareStatement("SELECT host, port FROM server_info WHERE name = ?");
+    	PreparedStatement stmt = conn.prepareStatement("SELECT host, id FROM server_info WHERE name = ?");
     	stmt.setString(1, homeServer);
     	ResultSet rs1 = stmt.executeQuery();
     	stmt.setString(1, backupServer);
@@ -248,10 +248,19 @@ public class DBHandler {
     	List<Object> addresses = new ArrayList<Object>();
     	rs1.next();
     	addresses.add(rs1.getString("host"));
-    	addresses.add(rs1.getInt("port"));
+    	int id1 = rs1.getInt("id");
+    	if (forServer)
+    		addresses.add(id1 + 8080);
+    	else
+    		addresses.add(id1 + 4747);
+    	
     	rs2.next();
     	addresses.add(rs2.getString("host"));
-    	addresses.add(rs2.getInt("port"));
+    	int id2 = rs2.getInt("id");
+    	if (forServer)
+    		addresses.add(id2 + 8080);
+    	else
+    		addresses.add(id2 + 4747);
     	
     	//Add names
     	addresses.add(homeServer);
