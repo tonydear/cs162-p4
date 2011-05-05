@@ -101,7 +101,7 @@ public abstract class AbstractChatClient extends Thread{
 		System.out.println(o);
 	}
 	
-	private synchronized void login(String user, String pass){
+	private void login(String user, String pass){
 		try {
 			if (connected) {
 				System.err.println("already connected");
@@ -265,8 +265,9 @@ public abstract class AbstractChatClient extends Thread{
 	
 	protected abstract void send(String dest, int sqn, String msg);
 	
-	private synchronized void switchToBackup() {
+	private void switchToBackup() {
 		connected = false;
+		System.out.println("home went down! switching to backup beep beep");
 		if (connectedToHome) {
 			try {
 				mySocket = new Socket(backupIP, backupPort);
@@ -360,6 +361,7 @@ public abstract class AbstractChatClient extends Thread{
 			connected = false;
 			return;
 		} catch (EOFException e) {
+			System.out.println("about to switch to backup");
 			switchToBackup();
 			return;
 		}
