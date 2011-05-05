@@ -77,6 +77,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			throw new IOException("Server socket creation failed");
 		}
 		try {
+			System.out.println("initing structures");
 			initStructures();
 		} catch (Exception e){
 			e.printStackTrace();
@@ -145,11 +146,14 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				int port = DBHandler.getPort(name, true);
 				Socket s = new Socket(ip,port);
 				ServerConnection conn = new ServerConnection(s,this);
+				System.out.println(name + " " + servername + "got");
 				conn.setup();
 			}
 		} catch (Exception e){
 			e.printStackTrace();
 		}
+
+		System.out.println("done setting up");
 	}
 	
 	public boolean isDown() { return isDown; }
