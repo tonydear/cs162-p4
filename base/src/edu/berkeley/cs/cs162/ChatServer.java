@@ -398,6 +398,8 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			lock.writeLock().unlock();
 			return false;
 		}
+		Set<String> grps = getAllGroups();
+		
 		if (myGroups.containsKey(groupname)) {
 			group = myGroups.get(groupname);
 			success = group.joinGroup(user.getUsername(), user);
@@ -408,7 +410,10 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			}
 			if (success){
 				user.addToGroups(groupname);
-				joinAck(user,groupname,ServerReply.OK_JOIN);
+				if(grps.contains(groupname))
+					joinAck(user,groupname,ServerReply.OK_JOIN);
+				else
+					joinAck(user,groupname,ServerReply.OK_CREATE);
 				TestChatServer.logUserJoinGroup(groupname, user.getUsername(), new Date());
 			} else
 				joinAck(user,groupname,ServerReply.FAIL_FULL);
@@ -423,7 +428,6 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			}
 			
 			TestChatServer.logUserJoinGroup(groupname, user.getUsername(), new Date());
-			Set<String> grps = getAllGroups();
 			
 			group = new ChatGroup(groupname, this);
 			myGroups.put(groupname, group);
