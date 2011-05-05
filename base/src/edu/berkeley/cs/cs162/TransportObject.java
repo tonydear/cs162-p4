@@ -33,6 +33,8 @@ public class TransportObject implements Serializable {
 		servername = null;
 	}
 	
+
+	
 	//Default with cmd; client logout, disconnect
 	public TransportObject(Command cmd) {
 		this();
@@ -47,6 +49,20 @@ public class TransportObject implements Serializable {
 		rtt_time = rtt;
 	}
 	
+	
+	// Server to server
+	public TransportObject(String sender, String dest, int sqn, String msg,
+			String timestamp) {
+		super();
+		this.sender = sender;
+		this.dest = dest;
+		this.sqn = sqn;
+		this.msg = msg;
+		this.timestamp = timestamp;
+	}
+
+
+
 	//Client join, leave
 	public TransportObject(Command cmd, String in1) {
 		this(cmd);
