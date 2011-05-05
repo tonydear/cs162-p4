@@ -129,8 +129,8 @@ public abstract class AbstractChatClient extends Thread{
 						
 						@Override
 						public void run(){
-							synchronized(AbstractChatClient.this){
-								while(true) {
+							while(true) {
+								synchronized(AbstractChatClient.this){
 									try {
 										homeSocket = new Socket(homeIP, homePort);
 										TransportObject toSend = new TransportObject(Command.logout);
@@ -294,8 +294,8 @@ public abstract class AbstractChatClient extends Thread{
 				private Socket homeSocket;
 				@Override
 				public void run(){
-					synchronized(AbstractChatClient.this){
-						while(true) {
+					while(true) {
+						synchronized(AbstractChatClient.this){
 							try {
 								homeSocket = new Socket(homeIP, homePort);
 								TransportObject toSend = new TransportObject(Command.logout);
