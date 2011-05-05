@@ -667,14 +667,26 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	}
 	
 	public static void main(String[] args) throws Exception{
-		if (args.length != 6) {
+		int clientport = -1;
+		int serverport = -1;
+		if(args.length == 6) {
+			if(!"--name".equals(args[0]) || !"--c_port".equals(args[2]) || !"--s_port".equals(args[4]))
+				throw new Exception("Invalid parameter args");
+			clientport = Integer.parseInt(args[3]);
+			serverport = Integer.parseInt(args[5]);
+		}
+		else if(args.length == 2) {
+			if(!"--name".equals(args[0]))
+				throw new Exception("Invalid parameter args");
+		}
+		else {
 			throw new Exception("Invalid number of args to command");
 		}
-		if(!"--name".equals(args[0]) || !"--c_port".equals(args[2]) || !"--s_port".equals(args[4]))
-			throw new Exception("Invalid parameter args");
+			
 		String servername = args[1];
-		int clientport = Integer.parseInt(args[3]);
-		int serverport = Integer.parseInt(args[5]);
+		if(clientport != -1)
+			DBHandler.addPorts(servername,serverport,clientport);
+		
 		ChatServer chatServer = new ChatServer(servername,clientport,serverport);
 		BufferedReader commands = new BufferedReader(new InputStreamReader(System.in));
 		while (!chatServer.isDown()) {
