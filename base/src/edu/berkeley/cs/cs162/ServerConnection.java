@@ -6,6 +6,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.SocketException;
+import java.sql.SQLException;
+import java.util.Date;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -95,9 +97,25 @@ public class ServerConnection extends Thread {
 		if(recObject.getServername()!=null) {
 			name = recObject.getServername();
 			server.addServer(name, this);
+		} else if (recObject.getCommand()==Command.send &&recObject.getServerReply()==ServerReply.NONE){
+			User dstUser = (User) server.getUser(recObject.getDest());
+			Message newMsg = new Message(recObject.getTimestamp(),recObject.getSender(),recObject.getDest(),recObject.getMessage());
+			if(dstUser==null){
+				try {
+					DBHandler.writeLog(newMsg, recObject.getDest());
+				} catch (SQLException e) {
+					TestChatServer.logChatServerDropMsg(newMsg.getContent(), new Date());
+					e.printStackTrace();
+				}
+			} else{
+				dstUser.acceptMsg(newMsg);
+			}
+		} else if (recObject.getCommand()==Command.send) {
+			User dstUser = (User) server.getUser(recObject.getDest());
+			if(dstUser!=null){
+				dstUser.queueReply(recObject);
+			}
 		}
-		
-		//TODO finish this, need to handle messages, msg failures, etc.
 	}
 	
 	/**
