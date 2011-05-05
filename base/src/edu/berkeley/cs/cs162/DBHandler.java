@@ -173,7 +173,7 @@ public class DBHandler {
     
     public static ResultSet getServers() throws SQLException {
     	Statement stmt = conn.createStatement();
-    	return stmt.executeQuery("SELECT name, host, port FROM server_info");
+    	return stmt.executeQuery("SELECT name, host FROM server_info");
     }
     
     public static ResultSet getUserMemberships(String username) throws SQLException {
@@ -273,11 +273,13 @@ public class DBHandler {
 		String backupServer = serverHashes.get(second);
 		
 		//Query for host and port for those two servers
-    	PreparedStatement stmt = conn.prepareStatement("SELECT host, id FROM server_info WHERE name = ?");
-    	stmt.setString(1, homeServer);
-    	ResultSet rs1 = stmt.executeQuery();
-    	stmt.setString(1, backupServer);
-    	ResultSet rs2 = stmt.executeQuery();
+    	PreparedStatement stmt1 = conn.prepareStatement("SELECT host, id FROM server_info WHERE name = ?");
+    	stmt1.setString(1, homeServer);
+    	ResultSet rs1 = stmt1.executeQuery();
+    	
+    	PreparedStatement stmt2 = conn.prepareStatement("SELECT host, id FROM server_info WHERE name = ?");
+    	stmt2.setString(1, backupServer);
+    	ResultSet rs2 = stmt2.executeQuery();
     	
     	//Construct results and return
     	List<Object> addresses = new ArrayList<Object>();

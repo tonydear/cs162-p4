@@ -40,8 +40,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ChatServer extends Thread implements ChatServerInterface {
 
-	private Map<String, User> users;
-	private Map<String, ChatGroup> groups;
+	private Map<String, User> myUsers;
+	private Map<String, ChatGroup> myGroups;
 	private Map<String, ServerConnection> servers;
 	private Set<String> onlineNames;
 	private ReentrantReadWriteLock lock;
@@ -52,8 +52,8 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	private String servername = null;
 	
 	public ChatServer() {
-		users = new HashMap<String, User>();
-		groups = new HashMap<String, ChatGroup>();
+		myUsers = new HashMap<String, User>();
+		myGroups = new HashMap<String, ChatGroup>();
 		servers = new ConcurrentHashMap<String, ServerConnection>();
 		onlineNames = new HashSet<String>();
 		lock = new ReentrantReadWriteLock(true);
@@ -122,14 +122,14 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		while(Groupnames.next()) {
 			String g = Groupnames.getString("gname");
 			onlineNames.add(g);
-			groups.put(g, new ChatGroup(g, this));
+			myGroups.put(g, new ChatGroup(g, this));
 		}
 		
 		ResultSet Members = DBHandler.getMemberships();
 		while(Members.next()) {
 			String u = Members.getString("username"); 
 			String g = Members.getString("gname");
-			ChatGroup group = groups.get(g);
+			ChatGroup group = myGroups.get(g);
 			if(group != null)
 				group.addUser(u);
 		}
@@ -142,7 +142,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				String name = serverRows.getString("name");
 				if(name.equals(servername)) continue;
 				String ip = serverRows.getString("host");
-				int port = serverRows.getInt("port");
+				int port = DBHandler.getPort(name, true);
 				Socket s = new Socket(ip,port);
 				ServerConnection conn = new ServerConnection(s,this);
 				conn.setup();
@@ -160,7 +160,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	public BaseUser getUser(String username) {
 		BaseUser u;
 		lock.readLock().lock();
-		u = users.get(username);
+		u = myUsers.get(username);
 		lock.readLock().unlock();
 		return u;
 	}
@@ -168,7 +168,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	public ChatGroup getGroup(String groupname) {
 		ChatGroup group;
 		lock.readLock().lock();
-		group = groups.get(groupname);
+		group = myGroups.get(groupname);
 		lock.readLock().unlock();
 		return group;
 	}
@@ -176,7 +176,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	public Set<String> getGroups() {
 		Set<String> groupNames;
 		lock.readLock().lock();
-		groupNames = this.groups.keySet();
+		groupNames = this.myGroups.keySet();
 		lock.readLock().unlock();
 		return groupNames;
 	}
@@ -184,7 +184,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	public Set<String> getActiveUsers() {
 		Set<String> userNames;
 		lock.readLock().lock();
-		userNames = users.keySet();
+		userNames = myUsers.keySet();
 		lock.readLock().unlock();
 		return userNames;
 	}
@@ -208,7 +208,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	public int getNumUsers(){
 		int num;
 		lock.readLock().lock();
-		num = users.size();
+		num = myUsers.size();
 		lock.readLock().unlock();
 		return num;
 	}
@@ -216,7 +216,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	public int getNumGroups(){
 		int num;
 		lock.readLock().lock();
-		num = groups.size();
+		num = myGroups.size();
 		lock.readLock().unlock();
 		return num;
 	}
@@ -234,7 +234,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		try {
 			rs = DBHandler.getUserMemberships(u.getUsername());
 			while(rs.next()){
-				ChatGroup group = groups.get(rs.getString("gname"));
+				ChatGroup group = myGroups.get(rs.getString("gname"));
 				group.addLoggedInUser(u.getUsername(), u);
 				u.addToGroups(group.getName());
 			}
@@ -279,7 +279,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		lock.readLock().lock();
 		List<Message> unsentMessages = DBHandler.readAndClearLog(username);
 		for (Message message : unsentMessages) {
-			users.get(username).acceptMsg(message);
+			myUsers.get(username).acceptMsg(message);
 		}
 		lock.readLock().unlock();
 	}
@@ -316,7 +316,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			e.printStackTrace();
 		}
 		User newUser = new User(this, username);
-		users.put(username, newUser);
+		myUsers.put(username, newUser);
 		onlineNames.add(username);
 		newUser.connected();
 		TestChatServer.logUserLogin(username, new Date());
@@ -340,7 +340,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	@Override
 	public boolean logoff(String username) {
 		lock.writeLock().lock();
-		if (!users.containsKey(username)){
+		if (!myUsers.containsKey(username)){
 			lock.writeLock().unlock();
 			return false;
 		}
@@ -348,16 +348,16 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			ResultSet rs = DBHandler.getUserMemberships(username);
 			while(rs.next()) {
 				String g = rs.getString("gname");
-				ChatGroup c = groups.get(g);
+				ChatGroup c = myGroups.get(g);
 				if(c != null)
 					c.removeLoggedInUser(username);
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
-		users.get(username).logoff();
+		myUsers.get(username).logoff();
 		onlineNames.remove(username);
-		users.remove(username);
+		myUsers.remove(username);
 		
 		lock.writeLock().unlock();	
 		return true;
@@ -398,12 +398,12 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		User user = (User) baseUser;
 		boolean success = false;
 		
-		if (!users.keySet().contains(user.getUsername())) {
+		if (!myUsers.keySet().contains(user.getUsername())) {
 			lock.writeLock().unlock();
 			return false;
 		}
-		if (groups.containsKey(groupname)) {
-			group = groups.get(groupname);
+		if (myGroups.containsKey(groupname)) {
+			group = myGroups.get(groupname);
 			success = group.joinGroup(user.getUsername(), user);
 			if(user.getUserGroups().contains(groupname)){
 				joinAck(user,groupname,ServerReply.ALREADY_MEMBER);
@@ -425,21 +425,16 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				lock.writeLock().unlock();
 				return false;
 			}
+			
+			TestChatServer.logUserJoinGroup(groupname, user.getUsername(), new Date());
+			Set<String> grps = getAllGroups();
+			
 			group = new ChatGroup(groupname, this);
-			groups.put(groupname, group);
+			myGroups.put(groupname, group);
 			success = group.joinGroup(user.getUsername(), user);
 			user.addToGroups(groupname);
-			TestChatServer.logUserJoinGroup(groupname, user.getUsername(), new Date());
-			Set<String> grps = new HashSet<String>();
-			try {
-				ResultSet rs = DBHandler.getGroups();
-				while(rs.next()) {
-					grps.add(rs.getString("gname"));
-				}
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
-			if(grps != null && grps.contains(groupname))
+			
+			if(grps.contains(groupname))
 				joinAck(user,groupname,ServerReply.OK_JOIN);
 			else if (success)
 				joinAck(user,groupname,ServerReply.OK_CREATE);
@@ -448,11 +443,24 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		}
 	}
 
+	protected Set<String> getAllGroups() {
+		Set<String> grps = new HashSet<String>();
+		try {
+			ResultSet rs = DBHandler.getGroups();
+			while(rs.next()) {
+				grps.add(rs.getString("gname"));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return grps;
+	}
+
 	@Override
 	public boolean leaveGroup(BaseUser baseUser, String groupname) {
 		User user = (User) baseUser;
 		lock.writeLock().lock();
-		ChatGroup group = groups.get(groupname);
+		ChatGroup group = myGroups.get(groupname);
 		if (group == null){
 			leaveAck(user,groupname,ServerReply.BAD_GROUP);
 			lock.writeLock().unlock();
@@ -461,7 +469,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		if (group.leaveGroup(user.getUsername())) {
 			leaveAck(user,groupname,ServerReply.OK);
 			if(group.getAllUsers().size() <= 0) { 
-				groups.remove(group.getName()); 
+				myGroups.remove(group.getName()); 
 				onlineNames.remove(group.getName());
 			}
 			user.removeFromGroups(groupname);
@@ -479,12 +487,12 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	@Override
 	public void shutdown() {
 		lock.writeLock().lock();
-		Set<String> userNames = users.keySet();
+		Set<String> userNames = myUsers.keySet();
 		for(String name: userNames){
-			users.get(name).logoff();
+			myUsers.get(name).logoff();
 		}
-		users.clear();
-		groups.clear();
+		myUsers.clear();
+		myGroups.clear();
 		isDown = true;
 		lock.writeLock().unlock();
 	}
@@ -518,20 +526,24 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		Message message = new Message(timestamp, source, dest, msg);
 		message.setSQN(sqn);
 		lock.readLock().lock();
-		Set<String> registeredUsers = getAllUsers();
-		if (users.containsKey(source)) {				//Valid destination user
-			if(!registeredUsers.contains(dest)) {
+		Set<String> allUsers = getAllUsers();
+		Set<String> allGroups = getAllGroups();
+		//Valid source user
+		if (myUsers.containsKey(source)) {
+			//Destination is either a user or a group
+			if(!allUsers.contains(dest) && !allGroups.contains(dest)) {
 				MsgSendError sendError = MsgSendError.INVALID_DEST;
 				lock.readLock().unlock();
 				return sendError;
 			}
-			if (users.containsKey(dest)) {
-				
-				User destUser = users.get(dest);
+			//Destination is a user on this server
+			if (myUsers.containsKey(dest)) {
+				User destUser = myUsers.get(dest);
 				destUser.acceptMsg(message);
-			} else if (groups.containsKey(dest)) {		//Group destination
+				//Destination is a group on this server
+			} else if (myGroups.containsKey(dest)) {
 				message.setIsFromGroup();
-				ChatGroup group = groups.get(dest);
+				ChatGroup group = myGroups.get(dest);
 				MsgSendError sendError = group.forwardMessage(message);
 				if (sendError == MsgSendError.NOT_IN_GROUP) {
 					TestChatServer.logChatServerDropMsg(message.toString(), new Date());
@@ -541,7 +553,12 @@ public class ChatServer extends Thread implements ChatServerInterface {
 					lock.readLock().unlock();
 					return sendError;
 				}
-				
+				//Destination is a group not on this server, so sender is not in group
+			} else if (allGroups.contains(dest)) { 
+				TestChatServer.logChatServerDropMsg(message.toString(), new Date());
+				lock.readLock().unlock();
+				return MsgSendError.NOT_IN_GROUP;
+				//Destination is a user not on this server, must forward
 			} else {
 				// If dest user is not on this server, forward it. 
 				//TestChatServer.logChatServerDropMsg(message.toString(), new Date());

@@ -115,6 +115,7 @@ public abstract class AbstractChatClient extends Thread{
 			homePort = (Integer) serverInfo.get(1);
 			backupIP = (String) serverInfo.get(2);
 			backupPort = (Integer) serverInfo.get(3);
+			System.out.println(homeIP + " " + homePort);
 			try {
 				mySocket = new Socket(homeIP, homePort);
 				connectedToHome = true;
