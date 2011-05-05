@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 public class ChatGroup {
@@ -103,14 +104,47 @@ public class ChatGroup {
 		Iterator<String> it = userList.iterator();
 		
 		MsgSendError returnval = MsgSendError.MESSAGE_SENT;
+		boolean success = true;
 		while(it.hasNext()) {
+			//check which server does it belong to
 			String username = it.next();
-			TransportObject toSend = new TransportObject(ServerReply.receive,msg.getSource(),
-					msg.getDest(),msg.getContent(),msg.getTimestamp(),msg.getSQN());
-			MsgSendError response = myServer.forward(toSend, username);
-			if(response == MsgSendError.MESSAGE_FAILED)
-				returnval = MsgSendError.MESSAGE_FAILED;
+			List<Object> serverAddresses;
+			try {
+				serverAddresses = DBHandler.getServerAddresses(username);
+			} catch (SQLException e) {
+				e.printStackTrace();
+				return MsgSendError.MESSAGE_FAILED;
+			}
+			if(serverAddresses == null)
+				return MsgSendError.MESSAGE_FAILED;
+			String home = (String) serverAddresses.get(4);
+			
+			//if this one get user and call accept message
+			if(home == myServer.getName()) {
+				User u = (User) myServer.getUser(username);
+				if(u == null) {
+					try {
+						DBHandler.writeLog(msg, username);
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+				}
+				else {
+					success = u.acceptMsg(msg);
+				}
+			}
+			else {	//else use the server to forward to appropriate server
+				TransportObject toSend = new TransportObject(ServerReply.receive,msg.getSource(),
+						msg.getDest(),msg.getContent(),msg.getTimestamp(),msg.getSQN());
+				MsgSendError response = myServer.forward(toSend, username);
+				if(response == MsgSendError.MESSAGE_FAILED)
+					returnval = MsgSendError.MESSAGE_FAILED;
+			}
 		}
-		return returnval;
+		
+		if (!success)
+			return MsgSendError.MESSAGE_FAILED;
+		else
+			return returnval;
 	}
 }
