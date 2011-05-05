@@ -18,13 +18,13 @@ public class TestChatServer {
 	
 	public static void main(String [] args) throws InterruptedException {
 		ChatServerInterface s = null;
-		try {
-			s = new ChatServer(0,"HELLO");
-		} catch (IOException e1) {
+		//try {
+			s = new ChatServer();
+		//} catch (IOException e1) {
 			// TODO Auto-generated catch block
-			e1.printStackTrace();
-			return;
-		}
+			//e1.printStackTrace();
+			//return;
+		//}
 		ExecutorService exe = Executors.newFixedThreadPool(10);
 		int i;
 		
