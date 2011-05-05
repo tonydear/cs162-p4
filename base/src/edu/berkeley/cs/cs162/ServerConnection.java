@@ -25,6 +25,7 @@ public class ServerConnection{
 	public ServerConnection(Socket socket, ChatServer server){
 		this.server = server;
 		toSend = new ArrayBlockingQueue<TransportObject>(MAX_SEND);
+		System.out.println(server.getServername());
 		try {
 			oos = new ObjectOutputStream(socket.getOutputStream());
 			ois = new ObjectInputStream(socket.getInputStream());
