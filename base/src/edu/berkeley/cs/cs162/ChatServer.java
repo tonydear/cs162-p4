@@ -397,6 +397,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		ChatGroup group;
 		User user = (User) baseUser;
 		boolean success = false;
+		
 		if (!users.keySet().contains(user.getUsername())) {
 			lock.writeLock().unlock();
 			return false;
@@ -419,7 +420,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			return success;
 		}
 		else {
-			if (onlineNames.contains(groupname)){
+			if (getAllUsers().contains(groupname)){
 				joinAck(user,groupname,ServerReply.BAD_GROUP);
 				lock.writeLock().unlock();
 				return false;
@@ -429,7 +430,18 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			success = group.joinGroup(user.getUsername(), user);
 			user.addToGroups(groupname);
 			TestChatServer.logUserJoinGroup(groupname, user.getUsername(), new Date());
-			if (success)
+			Set<String> grps = null;
+			try {
+				ResultSet rs = DBHandler.getGroups();
+				while(rs.next()) {
+					grps.add(rs.getString("gname"));
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+			if(grps != null && grps.contains(groupname))
+				joinAck(user,groupname,ServerReply.OK_JOIN);
+			else if (success)
 				joinAck(user,groupname,ServerReply.OK_CREATE);
 			lock.writeLock().unlock();
 			return success;
