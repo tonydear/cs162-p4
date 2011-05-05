@@ -104,7 +104,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 					try {
 						newSocket = serverSockets.accept();
 						ServerConnection newServer = new ServerConnection(newSocket,ChatServer.this);
-						newServer.start();
+						newServer.setup();
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
@@ -145,7 +145,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				int port = serverRows.getInt("port");
 				Socket s = new Socket(ip,port);
 				ServerConnection conn = new ServerConnection(s,this);
-				conn.start();
+				conn.setup();
 			}
 		} catch (Exception e){
 			e.printStackTrace();
@@ -502,6 +502,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			ServerConnection backup = servers.get(serverAddresses.get(5));
 			if(home!=null){
 				home.acceptMessage(toSend);
+				System.out.println("sending to " + username + " " + home.getName());
 			} else if(backup!=null){
 				backup.acceptMessage(toSend);
 			} else
@@ -644,6 +645,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 					}
 					if (recObject != null) {
 						Command type = recObject.getCommand();
+						System.out.println(type + " command received");
 						if (type == Command.login) {
 							String username = recObject.getUsername();
 							String password = recObject.getPassword();
@@ -653,6 +655,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 								sendObject = new TransportObject(Command.login, ServerReply.OK);
 								User newUser = (User) getUser(username);
 								newUser.setSocket(socket, received, sent);
+								System.out.println("login successful " + username);
 							} else if (loginError == LoginError.USER_DROPPED || loginError == LoginError.USER_REJECTED){
 								sendObject = new TransportObject(Command.login, ServerReply.REJECTED);
 								recObject = null;
@@ -679,14 +682,26 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	}
 	
 	public static void main(String[] args) throws Exception{
-		if (args.length != 6) {
+		int clientport = -1;
+		int serverport = -1;
+		if(args.length == 6) {
+			if(!"--name".equals(args[0]) || !"--c_port".equals(args[2]) || !"--s_port".equals(args[4]))
+				throw new Exception("Invalid parameter args");
+			clientport = Integer.parseInt(args[3]);
+			serverport = Integer.parseInt(args[5]);
+		}
+		else if(args.length == 2) {
+			if(!"--name".equals(args[0]))
+				throw new Exception("Invalid parameter args");
+		}
+		else {
 			throw new Exception("Invalid number of args to command");
 		}
-		if(!"--name".equals(args[0]) || !"--c_port".equals(args[2]) || !"--s_port".equals(args[4]))
-			throw new Exception("Invalid parameter args");
+			
 		String servername = args[1];
-		int clientport = Integer.parseInt(args[3]);
-		int serverport = Integer.parseInt(args[5]);
+		if(clientport != -1)
+			DBHandler.addPorts(servername,serverport,clientport);
+		
 		ChatServer chatServer = new ChatServer(servername,clientport,serverport);
 		BufferedReader commands = new BufferedReader(new InputStreamReader(System.in));
 		while (!chatServer.isDown()) {

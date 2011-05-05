@@ -44,7 +44,7 @@ public class DBHandler {
     	pstmt.executeUpdate();
     }
     
-    public static void addToGroup(String uname, String gname) throws SQLException{
+    public static void addToGroup(String uname, String gname) throws SQLException {
     	PreparedStatement pstmt = null;
     	try {
     		pstmt = conn.prepareStatement("INSERT INTO Memberships (gname, username)" +
@@ -56,6 +56,14 @@ public class DBHandler {
     	finally {
     		if(pstmt!=null) pstmt.close();
     	}
+    }
+    
+    public static void addPorts(String name, int serverPort, int clientPort) throws SQLException {
+    	PreparedStatement pstmt = conn.prepareStatement("INSERT INTO server_ports (name, server_port, client_port) VALUES (?,?,?)");
+    	pstmt.setString(1, name);
+    	pstmt.setInt(2, serverPort);
+    	pstmt.setInt(3, clientPort);
+    	pstmt.executeUpdate();
     }
     
     public static void writeLog(Message msg, String recipient) throws SQLException{
@@ -180,6 +188,33 @@ public class DBHandler {
     	return pstmt.executeQuery();
     }
     
+    public static int getPort(String name, boolean forServer) throws SQLException {
+    	PreparedStatement pstmt;
+    	ResultSet rs;
+    	if (forServer)
+    		pstmt = conn.prepareStatement("SELECT server_port FROM server_ports WHERE name = ?");
+    	else
+    		pstmt = conn.prepareStatement("SELECT client_port FROM server_ports WHERE name = ?");
+    	pstmt.setString(1, name);
+    	rs = pstmt.executeQuery();
+    	if (rs.next()) {
+    		if (forServer)
+    			return rs.getInt("server_port");
+    		else
+    			return rs.getInt("client_port");
+    	}
+    	
+    	pstmt = conn.prepareStatement("SELECT id FROM server_info WHERE name = ?");
+    	pstmt.setString(1, name);
+    	rs = pstmt.executeQuery();
+    	rs.next();
+    	int id = rs.getInt("id");
+    	if (forServer)
+    		return id + 8080;
+    	else
+    		return id + 4747;
+    }
+    
     public static List<Object> getServerAddresses(String username, boolean forServer) throws SQLException {
     	//Query for all server names
     	HashMap<BigInteger, String> serverHashes = new HashMap<BigInteger, String>();
@@ -248,19 +283,11 @@ public class DBHandler {
     	List<Object> addresses = new ArrayList<Object>();
     	rs1.next();
     	addresses.add(rs1.getString("host"));
-    	int id1 = rs1.getInt("id");
-    	if (forServer)
-    		addresses.add(id1 + 8080);
-    	else
-    		addresses.add(id1 + 4747);
+    	addresses.add(getPort(homeServer, forServer));
     	
     	rs2.next();
     	addresses.add(rs2.getString("host"));
-    	int id2 = rs2.getInt("id");
-    	if (forServer)
-    		addresses.add(id2 + 8080);
-    	else
-    		addresses.add(id2 + 4747);
+    	addresses.add(getPort(backupServer, forServer));
     	
     	//Add names
     	addresses.add(homeServer);
