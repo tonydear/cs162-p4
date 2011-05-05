@@ -24,16 +24,16 @@ public class ServerConnection{
 	
 	public ServerConnection(Socket socket, ChatServer server){
 		this.server = server;
+		toSend = new ArrayBlockingQueue<TransportObject>(MAX_SEND);
 		try {
-			ois = new ObjectInputStream(socket.getInputStream());
 			oos = new ObjectOutputStream(socket.getOutputStream());
+			ois = new ObjectInputStream(socket.getInputStream());
 			isUp = true;
 			TransportObject myNameIs = new TransportObject(server.getServername());
 			toSend.add(myNameIs);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		toSend = new ArrayBlockingQueue<TransportObject>(MAX_SEND);
 	}
 	
 	public String getName(){
