@@ -156,16 +156,16 @@ public abstract class AbstractChatClient extends Thread{
 										sent.writeObject(toSendLogin);
 										this.wait();
 									} catch (Exception e) {
-										e.printStackTrace();
+										
 									}
 									connectedToHome = true;
 									break;
 								} catch (UnknownHostException e1) {
 									// TODO Auto-generated catch block
-									e1.printStackTrace();
+									//e1.printStackTrace();
 								} catch (IOException e1) {
 									// TODO Auto-generated catch block
-									e1.printStackTrace();
+									//e1.printStackTrace();
 								}
 								try {
 									sleep(1000);
@@ -378,7 +378,11 @@ public abstract class AbstractChatClient extends Thread{
 		} else if (isWaiting && type.equals(reply)) {
 			if (reply.equals(Command.disconnect) || reply.equals(Command.login) || 
 					reply.equals(Command.logout) || reply.equals(Command.adduser)) {
-				
+				if(reply.equals(Command.logout)) {
+					connected = false;
+					isLoggedIn = false;
+					
+				}
 				if(reply.equals(Command.login) || reply.equals(Command.logout)) {
 					if(printLogAck) {
 						output(type.toString() + " " + servReply.toString());
