@@ -60,9 +60,18 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		isDown = false;
 	}
 	
-	public ChatServer(int c_port) throws IOException {
+	public ChatServer(int c_port, String name) throws IOException {
 		this();
+		servername = name;
 		try {
+			if(c_port==-1){
+				try {
+					c_port = DBHandler.getPort(servername,false);
+				} catch (Exception e){
+					e.printStackTrace();
+					return;
+				}
+			}
 			mySocket = new ServerSocket(c_port);
 		} catch (Exception e) {
 			throw new IOException("Server socket creation failed");
@@ -76,8 +85,17 @@ public class ChatServer extends Thread implements ChatServerInterface {
 	}
 	
 	public ChatServer(String name, int c_port, int s_port) throws IOException {
-		this(c_port);
+		this(c_port,name);
+		if(s_port==-1){
+			try {
+			s_port = DBHandler.getPort(name,true);
+			} catch (Exception e){
+				e.printStackTrace();
+				return;
+			}
+		}
 		serverSockets = new ServerSocket(s_port);
+		if(mySocket==null||serverSockets==null) return;
 		listenForServers = new Thread(){
 			@Override
 			public void run(){
@@ -86,14 +104,13 @@ public class ChatServer extends Thread implements ChatServerInterface {
 					try {
 						newSocket = serverSockets.accept();
 						ServerConnection newServer = new ServerConnection(newSocket,ChatServer.this);
-						newServer.start();
+						newServer.setup();
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
 				}
 			}
 		};
-		servername = name;
 		this.start();
 	}
 	
@@ -128,7 +145,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				int port = serverRows.getInt("port");
 				Socket s = new Socket(ip,port);
 				ServerConnection conn = new ServerConnection(s,this);
-				conn.start();
+				conn.setup();
 			}
 		} catch (Exception e){
 			e.printStackTrace();
@@ -473,6 +490,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			ServerConnection backup = servers.get(serverAddresses.get(5));
 			if(home!=null){
 				home.acceptMessage(toSend);
+				System.out.println("sending to " + username + " " + home.getName());
 			} else if(backup!=null){
 				backup.acceptMessage(toSend);
 			} else
@@ -615,6 +633,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 					}
 					if (recObject != null) {
 						Command type = recObject.getCommand();
+						System.out.println(type + " command received");
 						if (type == Command.login) {
 							String username = recObject.getUsername();
 							String password = recObject.getPassword();
@@ -624,6 +643,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 								sendObject = new TransportObject(Command.login, ServerReply.OK);
 								User newUser = (User) getUser(username);
 								newUser.setSocket(socket, received, sent);
+								System.out.println("login successful " + username);
 							} else if (loginError == LoginError.USER_DROPPED || loginError == LoginError.USER_REJECTED){
 								sendObject = new TransportObject(Command.login, ServerReply.REJECTED);
 								recObject = null;
