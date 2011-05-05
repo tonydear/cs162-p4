@@ -109,7 +109,7 @@ public class ChatGroup {
 			//check which server does it belong to
 			String username = it.next();
 			User u = (User) myServer.getUser(username);
-			
+
 			//if this one get user and call accept message
 			if(u != null) {
 				success = u.acceptMsg(msg) && success;

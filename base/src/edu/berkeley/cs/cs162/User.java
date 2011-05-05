@@ -72,14 +72,14 @@ public class User extends BaseUser {
 						reply = queuedServerReplies.poll(3, TimeUnit.SECONDS);
 						if(reply != null)
 							sent.writeObject(reply);
-					} catch (SocketException e) {
-						System.err.println(e);
-					} catch (Exception e) {
-						if(reply.getCommand().equals(Command.send)) {
+					}  catch (Exception e) {
+						if(reply!=null&&reply.getCommand().equals(Command.send)) {
 							User sender = (User) server.getUser(reply.getSender());
+							TransportObject error = new TransportObject(ServerReply.sendack,reply.getSQN());
 							if(sender!=null){
-								TransportObject error = new TransportObject(ServerReply.sendack,reply.getSQN());
 								sender.queueReply(error);
+							} else{
+								server.forward(error, reply.getSender());
 							}
 						}
 					}
