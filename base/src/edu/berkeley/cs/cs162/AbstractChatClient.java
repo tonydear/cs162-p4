@@ -39,6 +39,7 @@ public abstract class AbstractChatClient extends Thread{
 	private boolean connectedToHome;
 	private boolean printLogAck;
 	private volatile boolean backupVar;
+	private volatile boolean returnVar;
 	
 	public AbstractChatClient(){
 		mySocket = null;
@@ -50,6 +51,7 @@ public abstract class AbstractChatClient extends Thread{
 		receiver = null;
 		printLogAck = true;
 		backupVar = false;
+		returnVar = false;
         start();
 	}
 	
@@ -310,6 +312,7 @@ public abstract class AbstractChatClient extends Thread{
 							try {
 						
 								homeSocket = new Socket(homeIP, homePort);
+								returnVar = true;
 								TransportObject toSend = new TransportObject(Command.logout);
 								try {
 									sent.writeObject(toSend);
@@ -332,7 +335,8 @@ public abstract class AbstractChatClient extends Thread{
 									isWaiting = true;
 									reply = Command.login;
 									sent.writeObject(toSendLogin);
-									AbstractChatClient.this.wait();
+									System.out.println("about to wait");
+		
 								} catch (Exception e) {
 									e.printStackTrace();
 								}
@@ -383,7 +387,7 @@ public abstract class AbstractChatClient extends Thread{
 			while(backupVar) {
 				
 			}
-			System.out.println("about to switch to backup");
+			System.out.println("Finished switching to backup");
 			
 			return;
 		}
@@ -397,6 +401,7 @@ public abstract class AbstractChatClient extends Thread{
 			return;
 		}
 		Command type = recObject.getCommand();
+		System.out.println("type " + type + " " + isWaiting);
 		System.out.println("serverreply " + recObject.getServerReply());
 		System.out.println("message : " + recObject.getMessage());
 		ServerReply servReply = recObject.getServerReply();
@@ -411,6 +416,10 @@ public abstract class AbstractChatClient extends Thread{
 					
 				}
 				if(reply.equals(Command.login) || reply.equals(Command.logout)) {
+					if(reply.equals(Command.login)) {
+						System.out.println("setting returnVar to false");
+						returnVar = false;
+					}
 					if(printLogAck) {
 						output(type.toString() + " " + servReply.toString());
 					} else {
@@ -506,6 +515,12 @@ public abstract class AbstractChatClient extends Thread{
 	}
 	
 	public void processCommands() throws Exception {
+		int x = 0;
+		
+		while(returnVar){
+			x=1;
+		}
+		System.out.println("x is " + x);
 		String command = retrieveCommand();
 		if(command == null)
 			return;
