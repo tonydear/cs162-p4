@@ -91,12 +91,12 @@ public class ServerConnection{
 			isUp = false;
 			return;
 		}
-		
+		System.out.println("receivd object command " + recObject.getCommand());
 		if(recObject.getServername()!=null) {
 			name = recObject.getServername();
 			server.addServer(name, this);
 			System.out.println(name + " server is connected");
-		} else if (recObject.getCommand()==Command.send &&recObject.getServerReply()==ServerReply.NONE){
+		} else if (recObject.getMessage() != null &&recObject.getServerReply()==ServerReply.receive){
 			User dstUser = (User) server.getUser(recObject.getDest());
 			Message newMsg = new Message(recObject.getTimestamp(),recObject.getSender(),recObject.getDest(),recObject.getMessage());
 			if(dstUser==null){
@@ -107,9 +107,10 @@ public class ServerConnection{
 					e.printStackTrace();
 				}
 			} else{
+				System.out.println("serverconnection received message " + newMsg.getContent());
 				dstUser.acceptMsg(newMsg);
 			}
-		} else if (recObject.getCommand()==Command.send) {
+		} else if (recObject.getMessage() != null) {
 			User dstUser = (User) server.getUser(recObject.getDest());
 			if(dstUser!=null){
 				dstUser.queueReply(recObject);

@@ -370,6 +370,8 @@ public abstract class AbstractChatClient extends Thread{
 			return;
 		}
 		Command type = recObject.getCommand();
+		System.out.println("serverreply " + recObject.getServerReply());
+		System.out.println("message : " + recObject.getMessage());
 		ServerReply servReply = recObject.getServerReply();
 		if (servReply.equals(ServerReply.error)) {
 			System.err.println("Error");
