@@ -105,6 +105,43 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		this.start();
 	}
 	
+	public ChatServer(String name, int c_port, int s_port) throws IOException {
+		this();
+		servername = name;
+		
+		try {
+			mySocket = new ServerSocket(c_port);
+		} catch (Exception e) {
+			throw new IOException("Server socket creation failed");
+		}
+		try {
+			System.out.println("initing structures");
+			initStructures();
+		} catch (Exception e){
+			e.printStackTrace();
+			return;
+		}
+		
+		serverSockets = new ServerSocket(s_port);
+		if (mySocket == null || serverSockets == null) return;
+		listenForServers = new Thread(){
+			@Override
+			public void run(){
+				while(!isDown){
+					Socket newSocket;
+					try {
+						newSocket = serverSockets.accept();
+						ServerConnection newServer = new ServerConnection(newSocket, ChatServer.this);
+						newServer.setup();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		};
+		this.start();		
+	}
+	
 	private void initStructures() throws Exception {
 		initServerConnections();
 		
@@ -702,18 +739,26 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		return 0;
 	}
 	
-	public static void main(String[] args) throws Exception{
-		if(args.length == 2) {
-			if(!"--name".equals(args[0]))
+	public static void main(String[] args) throws Exception{		
+		if (args.length == 2) {
+			if (!"--name".equals(args[0]))
+				throw new Exception("Invalid parameter args");
+		}
+		else if (args.length == 6) {
+			if (!"--name".equals(args[0]) || !"--c_port".equals(args[2]) || !"--s_port".equals(args[4]))
 				throw new Exception("Invalid parameter args");
 		}
 		else {
 			throw new Exception("Invalid number of args to command");
 		}
 			
+		ChatServer chatServer;
 		String servername = args[1];
-
-		ChatServer chatServer = new ChatServer(servername);
+		if (args.length == 2)
+			chatServer = new ChatServer(servername);
+		else
+			chatServer = new ChatServer(servername, Integer.parseInt(args[3]), Integer.parseInt(args[5]));
+		
 		BufferedReader commands = new BufferedReader(new InputStreamReader(System.in));
 		while (!chatServer.isDown()) {
 			String line = commands.readLine();

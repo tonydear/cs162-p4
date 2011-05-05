@@ -32,15 +32,6 @@ CREATE TABLE Messages (
 		ON DELETE NO ACTION
 );
 
-CREATE TABLE server_ports (
-	name varchar(20) NOT NULL,
-	server_port int(5),
-	client_port int(5),
-	PRIMARY KEY (name),
-	FOREIGN KEY (name) REFERENCES server_info (name)
-		ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS server_info (
 	id int(11) NOT NULL AUTO_INCREMENT,
 	name varchar(20) NOT NULL,
