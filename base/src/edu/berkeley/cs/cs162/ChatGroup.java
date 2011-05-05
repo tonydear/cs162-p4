@@ -36,6 +36,7 @@ public class ChatGroup {
 			DBHandler.addToGroup(uname, name);
 		} catch (SQLException e) {
 			System.err.println("User " + uname + " was not added to group " + name + ".");
+			e.printStackTrace();
 		}
 	}
 	
