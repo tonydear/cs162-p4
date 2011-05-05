@@ -569,9 +569,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				// If dest user is not on this server, forward it. 
 				//TestChatServer.logChatServerDropMsg(message.toString(), new Date());
 				TransportObject toSend = new TransportObject(source, dest ,sqn, msg, timestamp);
-				System.out.println("I'm going forward!");
-				MsgSendError sendError = forward(toSend, source); 
-				System.out.println("forwarded");
+				MsgSendError sendError = forward(toSend, dest); 
 				lock.readLock().unlock();
 				return sendError;
 			}
