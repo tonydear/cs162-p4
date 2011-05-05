@@ -77,6 +77,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			throw new IOException("Server socket creation failed");
 		}
 		try {
+			
 			initStructures();
 		} catch (Exception e){
 			e.printStackTrace();
