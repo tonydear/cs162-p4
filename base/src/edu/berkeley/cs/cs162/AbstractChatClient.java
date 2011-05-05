@@ -13,6 +13,8 @@ import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 public abstract class AbstractChatClient extends Thread{
@@ -36,6 +38,7 @@ public abstract class AbstractChatClient extends Thread{
 	protected String username;
 	private boolean connectedToHome;
 	private boolean printLogAck;
+	private volatile boolean backupVar;
 	
 	public AbstractChatClient(){
 		mySocket = null;
@@ -46,6 +49,7 @@ public abstract class AbstractChatClient extends Thread{
 		reply = null;
 		receiver = null;
 		printLogAck = true;
+		backupVar = false;
         start();
 	}
 	
@@ -276,6 +280,7 @@ public abstract class AbstractChatClient extends Thread{
 				sent = new ObjectOutputStream(mySocket.getOutputStream());
 				InputStream input = mySocket.getInputStream();
 				received = new ObjectInputStream(input);
+				backupVar = false;
 				connected = true;
 				if (!connected && (!isLoggedIn || !isQueued))
 					return;
@@ -300,10 +305,10 @@ public abstract class AbstractChatClient extends Thread{
 				public void run(){
 					System.out.println("starting run of home poller");
 					while(true) {
-						System.out.println("starting while loop of hom epoller");
+						
 						synchronized(AbstractChatClient.this){
 							try {
-								System.out.println("polling");
+						
 								homeSocket = new Socket(homeIP, homePort);
 								TransportObject toSend = new TransportObject(Command.logout);
 								try {
@@ -340,7 +345,7 @@ public abstract class AbstractChatClient extends Thread{
 								//e1.printStackTrace();
 							}
 						}
-						System.out.println("released");
+					
 						try {
 							sleep(1000);
 						} catch (InterruptedException e) {
@@ -373,7 +378,11 @@ public abstract class AbstractChatClient extends Thread{
 					switchToBackup();
 				}
 			};
+			backupVar = true;
 			backupThread.start();
+			while(backupVar) {
+				
+			}
 			System.out.println("about to switch to backup");
 			
 			return;
