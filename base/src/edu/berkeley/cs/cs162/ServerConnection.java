@@ -12,7 +12,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class ServerConnection extends Thread {
+public class ServerConnection{
 	private ChatServer server;
 	private ObjectOutputStream oos;
 	private ObjectInputStream ois;
@@ -36,12 +36,15 @@ public class ServerConnection extends Thread {
 		toSend = new ArrayBlockingQueue<TransportObject>(MAX_SEND);
 	}
 	
-
+	public String getName(){
+		return name;
+	}
+	
 	public void acceptMessage(TransportObject sendMe){ //send things out
 		toSend.add(sendMe);
 	}
 	
-	public void run(){ 
+	public void setup(){ 
 		sender = new Thread(){
 			@Override
 			public void run(){
@@ -55,13 +58,6 @@ public class ServerConnection extends Thread {
 						System.err.println(e);
 						deleteSelf();
 					} catch (Exception e) {
-						if(msg.getCommand().equals(Command.send)) {
-							User sender = (User) server.getUser(msg.getSender());
-							if(sender!=null){
-								TransportObject error = new TransportObject(ServerReply.sendack,msg.getSQN());
-								sender.queueReply(error);
-							}
-						}
 						deleteSelf();
 					}
 				}
@@ -98,6 +94,7 @@ public class ServerConnection extends Thread {
 		if(recObject.getServername()!=null) {
 			name = recObject.getServername();
 			server.addServer(name, this);
+			System.out.println(name + " server is connected");
 		} else if (recObject.getCommand()==Command.send &&recObject.getServerReply()==ServerReply.NONE){
 			User dstUser = (User) server.getUser(recObject.getDest());
 			Message newMsg = new Message(recObject.getTimestamp(),recObject.getSender(),recObject.getDest(),recObject.getMessage());
@@ -124,6 +121,7 @@ public class ServerConnection extends Thread {
 	 */
 	private void deleteSelf(){
 		isUp = false;
+		System.out.println(name + " server went down");
 		if(name!=null){
 			server.removeServer(name);
 		}

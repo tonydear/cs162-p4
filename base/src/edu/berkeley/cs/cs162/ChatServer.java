@@ -104,7 +104,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 					try {
 						newSocket = serverSockets.accept();
 						ServerConnection newServer = new ServerConnection(newSocket,ChatServer.this);
-						newServer.start();
+						newServer.setup();
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
@@ -145,7 +145,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 				int port = serverRows.getInt("port");
 				Socket s = new Socket(ip,port);
 				ServerConnection conn = new ServerConnection(s,this);
-				conn.start();
+				conn.setup();
 			}
 		} catch (Exception e){
 			e.printStackTrace();
@@ -490,6 +490,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			ServerConnection backup = servers.get(serverAddresses.get(5));
 			if(home!=null){
 				home.acceptMessage(toSend);
+				System.out.println("sending to " + username + " " + home.getName());
 			} else if(backup!=null){
 				backup.acceptMessage(toSend);
 			} else
@@ -632,6 +633,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 					}
 					if (recObject != null) {
 						Command type = recObject.getCommand();
+						System.out.println(type + " command received");
 						if (type == Command.login) {
 							String username = recObject.getUsername();
 							String password = recObject.getPassword();
@@ -641,6 +643,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 								sendObject = new TransportObject(Command.login, ServerReply.OK);
 								User newUser = (User) getUser(username);
 								newUser.setSocket(socket, received, sent);
+								System.out.println("login successful " + username);
 							} else if (loginError == LoginError.USER_DROPPED || loginError == LoginError.USER_REJECTED){
 								sendObject = new TransportObject(Command.login, ServerReply.REJECTED);
 								recObject = null;
