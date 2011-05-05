@@ -126,15 +126,6 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			onlineNames.add(g);
 			myGroups.put(g, new ChatGroup(g, this));
 		}
-		
-		ResultSet Members = DBHandler.getMemberships();
-		while(Members.next()) {
-			String u = Members.getString("username"); 
-			String g = Members.getString("gname");
-			ChatGroup group = myGroups.get(g);
-			if(group != null)
-				group.addUser(u);
-		}
 	}
 	
 	private void initServerConnections(){
