@@ -73,9 +73,7 @@ public abstract class AbstractChatClient extends Thread{
 		            @Override
 		            public void run(){
 		            	while(connected){
-		            		System.out.println("about to begin receive");
 		            		receive();
-		            		System.out.println("finished receive");
 		            	}
 		            }
 		        };
@@ -124,7 +122,6 @@ public abstract class AbstractChatClient extends Thread{
 			homePort = DBHandler.getClientPort(serverNames.get(0));
 			backupIP = DBHandler.getIP(serverNames.get(1));
 			backupPort = DBHandler.getClientPort(serverNames.get(1));
-			System.out.println(homeIP + " " + homePort);
 			try {
 				mySocket = new Socket(homeIP, homePort);
 				connectedToHome = true;
@@ -138,11 +135,9 @@ public abstract class AbstractChatClient extends Thread{
 					output("login REJECTED");
 				}
 			}
-			System.out.println("connected");
 			sent = new ObjectOutputStream(mySocket.getOutputStream());
 			InputStream input = mySocket.getInputStream();
 			received = new ObjectInputStream(input);
-			System.out.println("init streams");
 			connected = true;
 			if(receiver == null || !receiver.isAlive()) {
 				receiver = new Thread(){
@@ -162,8 +157,6 @@ public abstract class AbstractChatClient extends Thread{
 			e.printStackTrace();
 		}
 		
-		System.out.println("about to log in");
-		
 		if (!connected && (!isLoggedIn || !isQueued))
 			return;
 		
@@ -172,7 +165,6 @@ public abstract class AbstractChatClient extends Thread{
 		try {
 			isWaiting = true;
 			reply = Command.login;
-			System.out.println("sending initial login obj");
 			sent.writeObject(toSend);
 			this.wait();
 		} catch (Exception e) {
@@ -190,9 +182,7 @@ public abstract class AbstractChatClient extends Thread{
 					commandLock.lock(); //process commands can't do anything
 					synchronized(AbstractChatClient.this){
 						try {
-							System.out.println("where is my home?");
 							homeSocket = new Socket(homeIP, homePort);
-							System.out.println("connecting to home server");
 							//logout of backup server
 							TransportObject toSend = new TransportObject(Command.logout);
 							try {
@@ -200,20 +190,15 @@ public abstract class AbstractChatClient extends Thread{
 								printLogAck = false;
 								isWaiting = true;
 								reply = Command.logout;
-								System.out.println("waiting to logout");
 								AbstractChatClient.this.wait();
 							} catch (Exception e) {
 								e.printStackTrace();
 							}
-							System.out.println("done logging out");
 							//setup home server socket
 							mySocket = homeSocket;
 							sent = new ObjectOutputStream(mySocket.getOutputStream());
-							System.out.println("1");
 							InputStream input = mySocket.getInputStream();
-							System.out.println("2");
 							received = new ObjectInputStream(input);
-							System.out.println("ready to login");
 							connected = true;
 							connectedToHome = true;
 							//start listening from new server
@@ -221,14 +206,11 @@ public abstract class AbstractChatClient extends Thread{
 					            @Override
 					            public void run(){
 					            	while(connected){
-					            		System.out.println("about to receive");
 					            		receive();
-					            		System.out.println("finished receiving");
 					            	}
 					            }
 					        };
 							receiver.start();
-							System.out.println("waiting to login");
 							//login to new server
 							TransportObject toSendLogin = new TransportObject(Command.login, username, password);
 							try {
@@ -239,7 +221,6 @@ public abstract class AbstractChatClient extends Thread{
 							} catch (Exception e) {
 
 							}
-							System.out.println("done waiting to login");
 							connectedToHome = true;
 							commandLock.unlock();
 							break;
@@ -307,12 +288,10 @@ public abstract class AbstractChatClient extends Thread{
 	
 	private synchronized void switchToBackup() {
 		connected = false;
-		System.out.println("home went down! switching to backup beep beep");
 		if (connectedToHome) {
 			try {
 				connectedToHome = false;
 				mySocket = new Socket(backupIP, backupPort);
-				System.out.println("connecting to new");
 				sent = new ObjectOutputStream(mySocket.getOutputStream());
 				InputStream input = mySocket.getInputStream();
 				received = new ObjectInputStream(input);
@@ -325,7 +304,6 @@ public abstract class AbstractChatClient extends Thread{
 					isWaiting = true;
 					reply = Command.login;
 					sent.writeObject(toSend);
-					System.out.println("waiting to be logged in");
 					this.wait();
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -335,7 +313,6 @@ public abstract class AbstractChatClient extends Thread{
 				System.err.println("backup server connection failed");
 				e1.printStackTrace();
 			} 
-			System.out.println("about to create homepoller thread");
 			homePoller();
 			homePoller.start();
 		} else {
@@ -363,7 +340,6 @@ public abstract class AbstractChatClient extends Thread{
 			backupVar = true;
 			backupThread.start();
 			while(backupVar) {}
-			System.out.println("Finished switching to backup");
 			
 			return;
 		}
@@ -377,9 +353,7 @@ public abstract class AbstractChatClient extends Thread{
 			return;
 		}
 		Command type = recObject.getCommand();
-		System.out.println("type " + type + " " + isWaiting);
-		System.out.println("serverreply " + recObject.getServerReply());
-		System.out.println("message : " + recObject.getMessage());
+		
 		ServerReply servReply = recObject.getServerReply();
 		if (servReply.equals(ServerReply.error)) {
 			System.err.println("Error");
@@ -457,7 +431,7 @@ public abstract class AbstractChatClient extends Thread{
 			isQueued = false;
 			isLoggedIn = true;
 		} else {
-			System.out.println("What kind of server reply is this? " + servReply);
+			System.err.println("What kind of server reply is this? " + servReply);
 		}
 	}
 	
