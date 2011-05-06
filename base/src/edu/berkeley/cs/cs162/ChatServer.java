@@ -628,6 +628,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			Socket newSocket;
 			try {
 				newSocket = mySocket.accept();
+				System.out.println("connection received");
 				Handler handler = new Handler(newSocket);
 				task.add(handler);
 				Thread t = new FirstThread(task, handler);
@@ -670,8 +671,12 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		private final Socket socket;
 		    Handler(Socket socket) throws IOException { 
 		    	this.socket = socket;
-		    	received = new ObjectInputStream(socket.getInputStream());
+		    	System.out.println("creating output");
 				sent = new ObjectOutputStream(socket.getOutputStream());
+		    	System.out.println("creating inputstream");
+		    	received = new ObjectInputStream(socket.getInputStream());
+		    	
+				System.out.println("done creating");
 		    }
 		    
 		    Handler(SocketParams params) {
