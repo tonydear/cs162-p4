@@ -68,7 +68,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			s_port = DBHandler.getServerPort(name);
 			c_port = DBHandler.getClientPort(name);
 		} catch (Exception e) {
-			System.out.println("Failed to get ports");
+			System.err.println("Failed to get ports");
 			return;
 		}
 		
@@ -78,7 +78,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			throw new IOException("Server socket creation failed");
 		}
 		try {
-			System.out.println("initing structures");
+			System.err.println("initing structures");
 			initStructures();
 		} catch (Exception e){
 			e.printStackTrace();
@@ -115,7 +115,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			throw new IOException("Server socket creation failed");
 		}
 		try {
-			System.out.println("initing structures");
+			System.err.println("initing structures");
 			initStructures();
 		} catch (Exception e){
 			e.printStackTrace();
@@ -170,14 +170,13 @@ public class ChatServer extends Thread implements ChatServerInterface {
 					continue;
 				}
 				ServerConnection conn = new ServerConnection(s,this);
-				System.out.println(name + " " + servername + "got");
 				conn.setup();
 			}
 		} catch (Exception e){
 			e.printStackTrace();
 		}
 
-		System.out.println("done setting up");
+		System.err.println("done setting up");
 	}
 	
 	public boolean isDown() { return isDown; }
@@ -541,9 +540,7 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			ServerConnection home = servers.get(serverNames.get(0));
 			ServerConnection backup = servers.get(serverNames.get(1));
 			if (home != null){
-				System.out.println("accept me for who i am");
 				home.acceptMessage(toSend);
-				System.out.println("sending to " + username + " " + home.getName());
 			} else if (backup != null){
 				backup.acceptMessage(toSend);
 			} else if (serverNames.get(1) != null && serverNames.get(1).equals(servername)){
@@ -628,7 +625,6 @@ public class ChatServer extends Thread implements ChatServerInterface {
 			Socket newSocket;
 			try {
 				newSocket = mySocket.accept();
-				System.out.println("connection received");
 				Handler handler = new Handler(newSocket);
 				task.add(handler);
 				Thread t = new FirstThread(task, handler);
@@ -671,12 +667,8 @@ public class ChatServer extends Thread implements ChatServerInterface {
 		private final Socket socket;
 		    Handler(Socket socket) throws IOException { 
 		    	this.socket = socket;
-		    	System.out.println("creating output");
 				sent = new ObjectOutputStream(socket.getOutputStream());
-		    	System.out.println("creating inputstream");
 		    	received = new ObjectInputStream(socket.getInputStream());
-		    	
-				System.out.println("done creating");
 		    }
 		    
 		    Handler(SocketParams params) {
@@ -707,7 +699,6 @@ public class ChatServer extends Thread implements ChatServerInterface {
 					}
 					if (recObject != null) {
 						Command type = recObject.getCommand();
-						System.out.println(type + " command received");
 						if (type == Command.login) {
 							String username = recObject.getUsername();
 							String password = recObject.getPassword();
@@ -717,7 +708,6 @@ public class ChatServer extends Thread implements ChatServerInterface {
 								sendObject = new TransportObject(Command.login, ServerReply.OK);
 								User newUser = (User) getUser(username);
 								newUser.setSocket(socket, received, sent);
-								System.out.println("login successful " + username);
 							} else if (loginError == LoginError.USER_DROPPED || loginError == LoginError.USER_REJECTED){
 								sendObject = new TransportObject(Command.login, ServerReply.REJECTED);
 								recObject = null;
@@ -726,7 +716,6 @@ public class ChatServer extends Thread implements ChatServerInterface {
 								recObject = null;
 							}
 							try {
-								System.out.println("server replying to clientt: " + sendObject.getCommand() + sendObject.getServerReply() + servername);
 								sent.writeObject(sendObject);
 							} catch (IOException e) {
 								e.printStackTrace();

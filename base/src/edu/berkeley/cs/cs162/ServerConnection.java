@@ -25,7 +25,7 @@ public class ServerConnection{
 	public ServerConnection(Socket socket, ChatServer server){
 		this.server = server;
 		toSend = new ArrayBlockingQueue<TransportObject>(MAX_SEND);
-		System.out.println(server.getServername());
+		System.err.println(server.getServername());
 		try {
 			oos = new ObjectOutputStream(socket.getOutputStream());
 			ois = new ObjectInputStream(socket.getInputStream());
@@ -55,7 +55,6 @@ public class ServerConnection{
 						msg = toSend.poll(3, TimeUnit.SECONDS);
 						if(msg != null) {
 							oos.writeObject(msg);
-							System.out.println("sending " + msg.getMessage());
 						}
 					} catch (SocketException e) {
 						System.err.println(e);
@@ -64,7 +63,6 @@ public class ServerConnection{
 						deleteSelf();
 					}
 				}
-				System.out.println("i'm done running");
 			}
 			
 		};
@@ -83,7 +81,6 @@ public class ServerConnection{
 						e.printStackTrace();
 					}
 				}
-				System.out.println("i'm done running receiver");
 			}
 		};
 		receiver.start();
@@ -95,11 +92,9 @@ public class ServerConnection{
 			isUp = false;
 			return;
 		}
-		System.out.println("receivd object command " + recObject.getCommand());
 		if(recObject.getServername()!=null) {
 			name = recObject.getServername();
 			server.addServer(name, this);
-			System.out.println(name + " server is connected");
 		} else if (recObject.getMessage() != null &&recObject.getServerReply()==ServerReply.receive){
 			User dstUser = (User) server.getUser(recObject.getDest());
 			Message newMsg = new Message(recObject.getTimestamp(),recObject.getSender(),recObject.getDest(),recObject.getMessage());
@@ -111,7 +106,6 @@ public class ServerConnection{
 					e.printStackTrace();
 				}
 			} else{
-				System.out.println("serverconnection received message " + newMsg.getContent());
 				dstUser.acceptMsg(newMsg);
 			}
 		} else if (recObject.getMessage() != null) {
@@ -127,7 +121,6 @@ public class ServerConnection{
 	 */
 	private void deleteSelf(){
 		isUp = false;
-		System.out.println(name + " server went down");
 		if(name!=null){
 			server.removeServer(name);
 		}
