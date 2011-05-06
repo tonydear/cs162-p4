@@ -580,7 +580,6 @@ public abstract class AbstractChatClient extends Thread{
 				throw new Exception("invalid command");
 			}
 		}
-		commandLock.unlock();
 	}
 
 	protected String retrieveCommand() {
@@ -601,6 +600,7 @@ public abstract class AbstractChatClient extends Thread{
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+			commandLock.unlock();
 		}
 	}
 	
