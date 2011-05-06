@@ -97,9 +97,10 @@ public abstract class AbstractChatClient extends Thread{
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		if(isLoggedIn)
+		if(isLoggedIn && printLogAck)
 			output("logout OK");
-		output("disconnect OK");
+		if(printLogAck)
+			output("disconnect OK");
 		isLoggedIn = false;
 		isQueued = false;
 		connected = false;
